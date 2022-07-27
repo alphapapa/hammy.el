@@ -1,0 +1,35 @@
+#+TITLE: Hammy.el notes
+
+* Mascot
+
+** https://commons.wikimedia.org/wiki/File:Hamster_standing_in_exercise_wheel.jpg_in_exercise_wheel.jpg :ATTACH:
+:PROPERTIES:
+:ID:       1fc48051-7b36-4631-bd9a-d3a8b1217914
+:END:
+
+#+NAME: Summary
+| Description | Hamster         |
+| Date        | 22 January 2008 |
+| Source      | Own work        |
+| Author      | Rlicul          |
+
+#+NAME: Licensing
+#+begin_quote
+Permission is granted to copy, distribute and/or modify this document under the terms of the GNU Free Documentation License, Version 1.2 or any later version published by the Free Software Foundation; with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A copy of the license is included in the section entitled GNU Free Documentation License.
+#+end_quote
+
+** https://commons.wikimedia.org/wiki/File:Pearl_Winter_White_Russian_Dwarf_Hamster_-_Front.jpg :ATTACH:
+:PROPERTIES:
+:ID:       003edf0e-d59f-45fe-bb16-9934c7e944f2
+:END:
+
+#+NAME: Summary
+| Description | English: Front of a Pearl Winter White Russian Dwarf Hamster. |
+| Date        | 12 January 2007 (original upload date)                        |
+| Source      | Own work                                                      |
+| Author      | Jpbarrass                                                     |
+
+#+NAME: Licensing
+#+begin_quote
+Permission is granted to copy, distribute and/or modify this document under the terms of the GNU Free Documentation License, Version 1.2 or any later version published by the Free Software Foundation; with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A copy of the license is included in the section entitled GNU Free Documentation License. Subject to disclaimers.
+#+end_quote
