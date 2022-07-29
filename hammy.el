@@ -59,7 +59,7 @@ it began, and the time it ended.")
   (cycles 0 :documentation "Number of times the timer has gone through a cycle of all intervals.")
   (intervals nil :documentation "List of defined intervals.")
   (interval nil :documentation "Current interval, if any.")
-  (interval-start-time nil :documentation "Time at which the current interval started.")
+  (current-interval-start-time nil :documentation "Time at which the current interval started.")
   (current-duration)
   (last-duration nil :documentation "Length in seconds of last interval.")
   (timer nil :documentation "Emacs timer for this timer.")
@@ -232,16 +232,16 @@ If QUIETLY, don't say so."
   (interactive
    (list (or (hammy-complete "Stop hammy: " hammy-active)
              (user-error "No active hammys"))))
-  (pcase-let (((cl-struct hammy (timer internal-timer)) hammy))
+  (pcase-let* (((cl-struct hammy (timer internal-timer)) hammy)
+               ;; TODO: Logging, totals, etc.
+               (message "Stopped."))
     (setf hammy-active (remove hammy hammy-active))
     (when internal-timer
       (cancel-timer internal-timer)
       (setf (hammy-timer hammy) nil)
+      (hammy-log hammy message)
       (unless quietly
-        (message "Hammy stopped: %s (%s)"
-                 ;; TODO: Logging, totals, etc.
-                 (hammy-name hammy)
-                 (hammy-documentation hammy))))
+        (message message)))
     (hammy-reset hammy)
     hammy))
 
@@ -255,7 +255,7 @@ If already running, restarts it."
     (setf (hammy-cycles hammy) 0
           (hammy-elapsed hammy) nil
           (hammy-interval hammy) nil
-          (hammy-interval-start-time hammy) nil
+          (hammy-current-interval-start-time hammy) nil
           (hammy-overduep hammy) nil)
     (when runningp
       (hammy-start hammy))
@@ -301,9 +301,10 @@ If DURATION, set its first interval to last that many seconds."
                  (null (hammy-elapsed hammy))
                  (null (hammy-interval hammy)))
       ;; Hammy already started, interval completed.
-      (push (list (hammy-interval hammy) (hammy-interval-start-time hammy) (current-time)) (hammy-elapsed hammy))
+      (push (list (hammy-interval hammy) (hammy-current-interval-start-time hammy) (current-time)) (hammy-elapsed hammy))
       (run-hook-with-args 'hammy-interval-hook hammy
-                          (format "Interval ended: %s" (hammy-interval-name (hammy-interval hammy))))
+                          (format "Interval ended: %s"
+                                  (hammy-interval-name (hammy-interval hammy))))
       (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
       (when (and (advancep)
                  (equal (hammy-interval hammy)
@@ -342,23 +343,24 @@ If DURATION, set its first interval to last that many seconds."
               (setf (hammy-overduep hammy) t)
               (hammy-run-place (hammy-interval-advance (hammy-interval hammy)) hammy))
           ;; Advancing.
+          (hammy-log hammy (format "Elapsed: %s" (hammy-format-current-times hammy)))
           (setf (hammy-interval hammy) next-interval
-                (hammy-interval-start-time hammy) (current-time)
+                (hammy-current-interval-start-time hammy) (current-time)
                 (hammy-current-duration hammy) next-duration
                 (hammy-overduep hammy) nil)
           (when next-duration
             (hammy-run-place (hammy-interval-before next-interval) hammy)
             (run-hook-with-args 'hammy-interval-hook hammy
-                                (format "Interval started: %s (%s seconds)"
+                                (format "Interval started: %s (%s)"
                                         (hammy-interval-name (hammy-interval hammy))
-                                        (hammy-current-duration hammy)))
+                                        (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
             (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))))
   hammy)
 
 (defun hammy-format (hammy &optional message)
   "Return formatted status for HAMMY, optionally with MESSAGE."
   (let* ((interval (cond ((hammy-interval hammy)
-                          (format "%s (%s seconds)"
+                          (format "%s (%s)"
                                   (hammy-interval-name (hammy-interval hammy))
                                   (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
                          ((and (hammy-complete-p hammy)
@@ -380,6 +382,21 @@ If DURATION, set its first interval to last that many seconds."
       (save-excursion
         (goto-char (point-max))
         (insert (format-time-string "%Y-%m-%d %H:%M:%S  ") (hammy-format hammy message) "\n")))))
+
+(defun hammy-format-current-times (hammy)
+  "Return current times for HAMMY formatted.
+String includes elapsed time of the current interval and any
+overrun time."
+  (let* ((elapsed-secs (float-time
+                        (time-subtract (current-time)
+                                       (hammy-current-interval-start-time hammy))))
+         (difference (float-time
+                      (time-subtract (hammy-current-duration hammy) elapsed-secs))))
+    (format "%s%s"
+            (ts-human-format-duration elapsed-secs 'abbr)
+            (if (< difference 0)
+                (format " (+%s)" (abs difference))
+              ""))))
 
 (defun hammy--log-buffer ()
   "Return Hammy log buffer."
@@ -478,7 +495,7 @@ If DURATION, set its first interval to last that many seconds."
                           ;; negative numbers.
                           (- (hammy-current-duration hammy)
                              (float-time (time-subtract (current-time)
-                                                        (hammy-interval-start-time hammy)))))))
+                                                        (hammy-current-interval-start-time hammy)))))))
           (format "%s%s%s(%s:%s) "
                   (propertize hammy-mode-lighter-prefix
                               'face 'hammy-mode-lighter-prefix-active)
