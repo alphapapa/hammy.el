@@ -3,6 +3,9 @@
 ;; Copyright (C) 2022  Adam Porter
 
 ;; Author: Adam Porter <adam@alphapapa.net>
+;; URL: https://github.com/alphapapa/hammy.el
+;; Version: 0.1-pre
+;; Package-Requires: ((emacs "28.1") (ts "0.2.2"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -20,11 +23,7 @@
 
 ;;; Commentary:
 
-;; TODO: Sentinels to stop timer after so many cycles or upon other conditions.
-;; TODO: Logging.
 ;; TODO: Pausing.
-;; TODO: Saving and choosing timers (maybe using Emacs bookmarks?).
-;; TODO: Mode-line lighter, etc.
 
 ;;;; FAQ
 
@@ -39,6 +38,8 @@
 
 (require 'cl-lib)
 (require 'ring)
+
+(require 'ts)
 
 ;;;; Structs
 
@@ -66,6 +67,7 @@ is complete, before starting the next interval."))
 (cl-defstruct hammy-interval
   (name "" :type 'string)
   (documentation "" :documentation "Documentation.") ; !
+  (face nil :documentation "Optional face in which to show the name of the interval.")
   (length nil :documentation "Number of seconds or function that returns such.
 If a function, it is given one argument, the timer it is being
 run in.")
@@ -80,8 +82,9 @@ Called with one argument, the Hammy timer."))
 
 (defmacro hammy-define (name &rest args)
   "Define a new Hammy named NAME made with ARGS.
-NAME is a string.  ARGS are passed to `make-hammy', which see.
-Within ARGS, these functions are available to be called:
+Returns the hammy, and adds hammy to `hammy-hammys'.  NAME is a
+string.  ARGS are passed to `make-hammy', which see.  Within
+ARGS, these functions are available to be called:
 
   `announce':"
   (declare (indent defun))
@@ -150,7 +153,8 @@ Within ARGS, these functions are available to be called:
          (ring-insert-at-beginning ring interval))
        (setf (hammy-intervals hammy) ring)
        (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
-       (push hammy hammy-hammys))))
+       (push hammy hammy-hammys)
+       hammy)))
 
 ;;;; Variables
 
@@ -222,20 +226,23 @@ If QUIETLY, don't say so."
         (message "Hammy stopped: %s (%s)"
                  ;; TODO: Logging, totals, etc.
                  (hammy-name hammy)
-                 (hammy-documentation hammy))))))
+                 (hammy-documentation hammy))))
+    (hammy-reset hammy)
+    hammy))
 
-(defun hammy-reset (hammy &optional restartp)
+(defun hammy-reset (hammy)
   "Reset HAMMY timer.
-Sets its elapsed cycles back to 0.  If RESTARTP, also run it
-again."
-  (interactive (list (hammy-complete "Reset hammy: " hammy-hammys) current-prefix-arg))
-  (hammy-stop hammy)
-  (setf (hammy-cycles hammy) 0
-        (hammy-elapsed hammy) nil
-        (hammy-interval hammy) nil)
-  (when restartp
-    (hammy-start hammy))
-  hammy)
+If already running, restarts it."
+  (interactive (list (hammy-complete "Reset hammy: " hammy-hammys)))
+  (let ((runningp (hammy-timer hammy)))
+    (when runningp
+      (hammy-stop hammy 'quietly))
+    (setf (hammy-cycles hammy) 0
+          (hammy-elapsed hammy) nil
+          (hammy-interval hammy) nil)
+    (when runningp
+      (hammy-start hammy))
+    hammy))
 
 (defun hammy-toggle (hammy)
   "Toggle HAMMY timer.
@@ -295,7 +302,7 @@ If DURATION, set its first interval to last that many seconds."
            (funcall (hammy-complete-p hammy) hammy))
       ;; Hammy complete.
       (progn
-        (setf (hammy-interval hammy) nil)
+        (hammy-stop hammy 'quietly)
         (run-hook-with-args 'hammy-complete-hook hammy)
         (hammy-run-place (hammy-after hammy) hammy)
         ;; (setf hammy-active (remove hammy hammy-active))
@@ -331,7 +338,7 @@ If DURATION, set its first interval to last that many seconds."
                           (format "%s (%s seconds)"
                                   ;; FIXME: Human-format duration.
                                   (hammy-interval-name (hammy-interval hammy))
-                                  (hammy-current-duration hammy)))
+                                  (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
                          ((and (hammy-complete-p hammy)
                                (funcall (hammy-complete-p hammy) hammy))
                           "Completed.")
@@ -376,6 +383,54 @@ If DURATION, set its first interval to last that many seconds."
 (defun hammy-announce (hammy message)
   (message "Hammy (%s): %s"
            (hammy-name hammy) message))
+
+;;;; Mode
+
+(define-minor-mode hammy-mode
+  "Show active hammy in the mode line."
+  :global t
+  :group 'hammy
+  (let ((lighter '(hammy-mode (:eval (hammy-mode-lighter)))))
+    (if hammy-mode
+        (progn
+          (add-hook 'hammy-interval-hook #'force-mode-line-update)
+          ;; Avoid adding the lighter multiple times if the mode is activated again.
+          (cl-pushnew (list lighter) mode-line-misc-info :test #'equal))
+      (remove-hook 'hammy-interval-hook #'force-mode-line-update)
+      (setf mode-line-misc-info
+            (delete lighter mode-line-misc-info)))))
+
+(defcustom hammy-mode-always-show-lighter t
+  "Show lighter even when no hammys are running."
+  :type 'boolean)
+
+(defcustom hammy-mode-lighter-prefix "🐹"
+  "Show lighter even when no hammys are running."
+  :type 'string)
+
+(defface hammy-mode-lighter-prefix-inactive '((t (:inherit error)))
+  "Used when no hammy is active.")
+(defface hammy-mode-lighter-prefix-active '((t (:inherit font-lock-type-face)))
+  "Used when no hammy is active.")
+
+(defun hammy-mode-lighter ()
+  ;; NOTE: This actually only shows the first active hammy, but it
+  ;; seems unlikely that users will use more than one
+  ;; simultaneously.
+  (let ((hammy (car (cl-remove-if-not #'hammy-timer hammy-hammys))))
+    (if hammy
+        (format "%s:%s(%s:%s) "
+                (propertize hammy-mode-lighter-prefix
+                            'face 'hammy-mode-lighter-prefix-active)
+                (hammy-name hammy)
+                (propertize (hammy-interval-name (hammy-interval hammy))
+                            'face (hammy-interval-face (hammy-interval hammy)))
+                (ts-human-format-duration (hammy-current-duration hammy) 'abbr))
+      ;; No active hammys.
+      (when hammy-mode-always-show-lighter
+        (concat (propertize hammy-mode-lighter-prefix
+                            'face 'hammy-mode-lighter-prefix-inactive)
+                ":None ")))))
 
 ;;;; Notifications
 
