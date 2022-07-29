@@ -26,29 +26,42 @@
 ;; TODO: Saving and choosing timers (maybe using Emacs bookmarks?).
 ;; TODO: Mode-line lighter, etc.
 
+;;;; FAQ
+
+;; Q: Why are timers called hammys?  Isn't that silly?
+
+;; A: Probably.  But it also helps to distinguish them from Emacs's
+;; timers, which are used in the implementation.
+
 ;;; Code:
 
 ;;;; Requirements
 
 (require 'cl-lib)
+(require 'ring)
 
 ;;;; Structs
 
-(cl-defstruct hammy-hammy
+(cl-defstruct hammy
   (name "" :type 'string) (documentation "" :documentation "Documentation.")
   (elapsed nil :documentation "List of elapsed intervals."
            ;; FIXME: This.
            )
   (cycles 0 :documentation "Number of times the timer has gone through a cycle of all intervals.")
   (intervals nil :documentation "List of defined intervals.")
-  (current-interval) (current-duration)
+  (interval nil :documentation "Current interval, if any.")
+  (current-duration)
   (last-duration nil :documentation "Length in seconds of last interval.")
   (timer nil :documentation "Emacs timer for this timer.")
   (etc nil :documentation "Alist which may be used to store any extra data.")
   (before nil :documentation "Function called before running timer.
-Called with one argument, the timer.")
-  (after nil :documentation "Function called after timer's cycles have completed.
-Called with one argument, the timer."))
+Called with one argument, the hammy.")
+  (after nil :documentation "Function called after timer has completed.
+Called with one argument, the hammy.  Called when the hammy's
+completion predicate returns non-nil.")
+  (complete-p nil :documentation "Predicate that returns non-nil when hammy is complete.
+Called with one argument, the hammy.  Called after each interval
+is complete, before starting the next interval."))
 
 (cl-defstruct hammy-interval
   (name "" :type 'string)
@@ -61,78 +74,137 @@ Called with one argument, the Hammy timer.")
   (after nil :documentation "Function called when interval ends.
 Called with one argument, the Hammy timer."))
 
-(define-error 'hammy-hammy-over "Hammy is over!")
+(define-error 'hammy-complete "Hammy is over!")
 
 ;;;; Macros
 
-(defmacro make-hammy (&rest args)
-  "Return a HAMMY hammy made with ARGS.
+(defmacro hammy-define (name &rest args)
+  "Define a new Hammy named NAME made with ARGS.
+NAME is a string.  ARGS are passed to `make-hammy', which see.
 Within ARGS, these functions are available to be called:
 
   `announce':"
+  (declare (indent defun))
   ;; FIXME: Docstring.
+  
+  ;; In some ways, it might be preferable for this macro to expand to
+  ;; the hammy struct, but then it wouldn't be forward-compatible if
+  ;; the structure changes, so we just expand to the code that makes
+  ;; the struct.
+
+  ;; NOTE: If a user byte-compiles a config file containing a
+  ;; `hammy-define' call, and the definition of this macro changes in
+  ;; a later version, it will be a problem.  So it would be nice if
+  ;; this were a function instead of a macro, but that would mean that
+  ;; the user would have to quote the argument to prevent evaluation,
+  ;; which would likely be confusing to many users.  So, for now, at
+  ;; least, it will be a macro.
   `(cl-labels ((announce (message)
                          (lambda (hammy)
-                           (hammy-announce message hammy)))
+                           (hammy-announce hammy message)))
+               (notify (message)
+                       (lambda (hammy)
+                         (hammy-notify hammy message)))
                (duration (interval)
                          (timer-duration interval) )
                (interval (&rest args)
                          (apply #'make-hammy-interval args))
                (num-intervals (hammy)
-                              (ring-length (hammy-hammy-intervals hammy)))
+                              (ring-length (hammy-intervals hammy)))
                (elapsed (hammy)
-                        (hammy-hammy-elapsed hammy))
+                        (hammy-elapsed hammy))
                (cycles (hammy)
-                       (hammy-hammy-cycles hammy))
-               (climb (from to &key descend then)
+                       (hammy-cycles hammy))
+               (climb (from to &key descend)
                       ;; FIXME: Make arguments optional.
                       (lambda (hammy)
                         (let* ((apex (/ (duration to)
-                                        (duration from))))
-                          (pcase then
-                            ('stop (when (= apex (cycles hammy))
-                                     (signal 'hammy-hammy-over hammy))))
-                          (if (< (cycles hammy) apex)
-                              ;; Spin up!
-                              (min (* (pcase (cycles hammy)
-                                        (0 1)
-                                        (cycles (1+ cycles)))
-                                      (duration from))
-                                   (duration to))
-                            ;; Spin down...
-                            (pcase-exhaustive descend
-                              (`nil (min (* (pcase (cycles hammy)
-                                              (0 1)
-                                              (cycles (1+ cycles)))
-                                            (duration from))
-                                         (duration to)))
-                              (`t (min (* (pcase (- (cycles hammy) apex)
-                                            (0 1)
-                                            (cycles (1+ cycles)))
-                                          (duration from))
-                                       (duration to)))))))))
-     (let* ((hammy (make-hammy-hammy ,@args))
-            (ring (make-ring (length (hammy-hammy-intervals hammy)))))
-       (dolist (interval (hammy-hammy-intervals hammy))
+                                        (duration from)))
+                               (duration (if (< (cycles hammy) apex)
+                                             ;; Spin up!
+                                             (min (* (pcase (cycles hammy)
+                                                       (0 1)
+                                                       (cycles (1+ cycles)))
+                                                     (duration from))
+                                                  (duration to))
+                                           ;; Spin down...
+                                           (pcase-exhaustive descend
+                                             (`nil (min (* (pcase (cycles hammy)
+                                                             (0 1)
+                                                             (height (1+ height)))
+                                                           (duration from))
+                                                        (duration to)))
+                                             (`t (hammy-log hammy (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s"
+                                                                          (cycles hammy) apex from to))
+                                                 (min (* (pcase (- (* 2 apex) (cycles hammy))
+                                                           (0 1)
+                                                           (height (1- height)))
+                                                         (duration from))
+                                                      (duration to)))))))
+                          duration
+                          
+                          ))))
+     (let* ((hammy (make-hammy :name ,name ,@args))
+            (ring (make-ring (length (hammy-intervals hammy)))))
+       (dolist (interval (hammy-intervals hammy))
          (ring-insert-at-beginning ring interval))
-       (setf (hammy-hammy-intervals hammy) ring)
-       hammy)))
+       (setf (hammy-intervals hammy) ring)
+       (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
+       (push hammy hammy-hammys))))
 
 ;;;; Variables
 
-(defvar hammy-flywheel
-  (make-hammy :name "Flywheel"
-              :documentation "Get your momentum going!"
-              :intervals (list (interval :name "Play"
-                                         :length (climb "5 minutes" "15 minutes")
-                                         :before (announce "        Play time!")
-                                         :after (announce "Play time is over!"))
-                               (interval :name "Work"
-                                         :length (climb "5 minutes" "45 minutes"
-                                                        :descend t :then 'stop)
-                                         :before (announce "        Work time!")
-                                         :after (announce "Work time is over!"))))
-  "A standard Hammy flywheel timer.")
+(defvar hammy-hammys nil
+  "List of defined hammys.
+Define a hammy with `hammy-define'.")
+
+(hammy-define "Flywheel"
+  :documentation "Get your momentum going!"
+  :intervals (list (interval :name "Play"
+                             :length (climb "5 minutes" "15 minutes")
+                             :before (announce "Play time!")
+                             :after (announce "Play time is over!"))
+                   (interval :name "Work"
+                             :length (climb "5 minutes" "45 minutes"
+                                            :descend t)
+                             :before (announce "Work time!")
+                             :after (announce "Work time is over!")))
+  :complete-p (lambda (hammy)
+                (and (hammy-interval hammy)
+                     (equal "Work" (hammy-interval-name (hammy-interval hammy)))
+                     (equal (duration "45 minutes") (hammy-current-duration hammy)))))
+
+;;;; Customization
+
+(defgroup hammy nil
+  "Programmable interval timers."
+  :group 'convenience)
+
+(defcustom hammy-log-buffer-name "*Hammy Log*"
+  "Name of Hammy log buffer."
+  :type 'string)
+
+(defcustom hammy-start-hook '((lambda (hammy) (hammy-log hammy "Starting...")))
+  "Functions run when a hammy is started.
+Called with the hammy, and optionally a message."
+  :type 'hook)
+
+(defcustom hammy-complete-hook '((lambda (hammy) (hammy-log hammy "Completed.")))
+  "Functions run when a hammy is completed.
+That is, when the hammy completes its programmed cycles (not when
+manually interrupted).  Called with the hammy, and optionally a
+message."
+  :type 'hook)
+
+(defcustom hammy-interval-hook '((lambda (hammy &optional message) (hammy-log hammy message)))
+  "Functions run when a hammy completes an interval.
+Called with the hammy, and optionally a message."
+  :type 'hook)
+
+(defcustom hammy-cycle-hook '((lambda (hammy) (hammy-log hammy "Cycled.")))
+  "Functions run when a hammy completes a cycle.
+Called with the hammy, and optionally a message."
+  :type 'hook)
 
 ;;;; Commands
 
@@ -140,138 +212,179 @@ Within ARGS, these functions are available to be called:
   "Stop HAMMY timer.
 If QUIETLY, don't say so."
   (interactive
-   (list (hammy-complete)))
-  (pcase-let (((cl-struct hammy-hammy (timer internal-timer)) hammy))
+   (list (or (hammy-complete "Stop hammy: " (cl-remove-if-not #'hammy-timer hammy-hammys))
+             (user-error "No active hammys"))))
+  (pcase-let (((cl-struct hammy (timer internal-timer)) hammy))
     (when internal-timer
       (cancel-timer internal-timer)
-      (setf (hammy-hammy-timer hammy) nil)
+      (setf (hammy-timer hammy) nil)
       (unless quietly
         (message "Hammy stopped: %s (%s)"
                  ;; TODO: Logging, totals, etc.
-                 (hammy-hammy-name hammy)
-                 (hammy-hammy-documentation hammy))))))
+                 (hammy-name hammy)
+                 (hammy-documentation hammy))))))
 
 (defun hammy-reset (hammy &optional restartp)
   "Reset HAMMY timer.
 Sets its elapsed cycles back to 0.  If RESTARTP, also run it
 again."
-  (interactive (list (hammy-complete) current-prefix-arg))
+  (interactive (list (hammy-complete "Reset hammy: " hammy-hammys) current-prefix-arg))
   (hammy-stop hammy)
-  (setf (hammy-hammy-cycles hammy) 0
-        (hammy-hammy-elapsed hammy) nil
-        (hammy-hammy-current-interval hammy) nil)
+  (setf (hammy-cycles hammy) 0
+        (hammy-elapsed hammy) nil
+        (hammy-interval hammy) nil)
   (when restartp
-    (hammy-run hammy)))
+    (hammy-start hammy))
+  hammy)
 
 (defun hammy-toggle (hammy)
   "Toggle HAMMY timer.
 If paused, resume it.  If running, pause it."
-  (interactive (list (hammy-complete)))
-  (if (hammy-hammy-timer hammy)
+  (interactive (list (hammy-complete "Toggle hammy: " hammy-hammys)))
+  (if (hammy-timer hammy)
       (let ((remaining-time (float-time (time-subtract (timer--time hammy) (current-time)))))
-        (setf (alist-get 'remaining-time (hammy-hammy-etc hammy)) remaining-time)
+        (setf (alist-get 'remaining-time (hammy-etc hammy)) remaining-time)
         (hammy-stop hammy))
-    (hammy-run hammy (alist-get 'remaining-time (hammy-hammy-etc hammy)))
-    (setf (alist-get 'remaining-time (hammy-hammy-etc hammy)) nil)))
+    (hammy-start hammy (alist-get 'remaining-time (hammy-etc hammy)))
+    (setf (alist-get 'remaining-time (hammy-etc hammy)) nil))
+  hammy)
 
 ;;;; Functions
 
-(defun hammy-run (hammy &optional duration)
-  "Run HAMMY timer.
+(defun hammy-start (hammy &optional duration)
+  "Start HAMMY and return it.
 If DURATION, set its first interval to last that many seconds."
-  (when (and (= 0 (hammy-hammy-cycles hammy))
-             (null (hammy-hammy-elapsed hammy))
-             (hammy-hammy-before hammy))
-    ;; Starting timer: run before function.
-    (funcall (hammy-hammy-elapsed hammy) hammy))
-  (when (equal (hammy-hammy-current-interval hammy)
-               (ring-ref (hammy-hammy-intervals hammy)
-                         (1- (ring-length (hammy-hammy-intervals hammy)))))
-    ;; Timer has completed a cycle: increment counter.
-    (cl-incf (hammy-hammy-cycles hammy)))
-  (hammy-stop hammy 'quietly)
-  (pcase-let* (((cl-struct hammy-hammy current-interval) hammy)
-               (next-interval (if current-interval
-                                  (ring-next (hammy-hammy-intervals hammy) current-interval)
-                                (ring-ref (hammy-hammy-intervals hammy) 0)))
-               (next-duration (or duration
-                                  (cl-etypecase (hammy-interval-length next-interval)
-                                    (number (hammy-interval-length next-interval))
-                                    (function (condition-case _err
-                                                  (funcall (hammy-interval-length next-interval) hammy)
-                                                (hammy-hammy-over
-                                                 (message "Hammy is over!  (%s)" (hammy-hammy-name hammy))
-                                                 0)))))))
-    (when current-interval
-      (when-let ((after (hammy-interval-after current-interval)))
-        ;; Announce before updating slots.
-        (funcall after hammy))
-      (push current-interval (hammy-hammy-elapsed hammy)))    
-    (when next-interval
-      (setf (hammy-hammy-current-interval hammy) next-interval
-            (hammy-hammy-current-duration hammy) next-duration
-            (hammy-hammy-timer hammy) (run-at-time next-duration nil #'hammy-run hammy))
-      (when (hammy-interval-before next-interval)
-        ;; Announce after updating slots.
-        (funcall (hammy-interval-before next-interval) hammy))))
+  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))))
+  (unless (and (= 0 (hammy-cycles hammy))
+               ;; TODO: Are both of these tests necessary?
+               (null (hammy-elapsed hammy))
+               (null (hammy-interval hammy)))
+    (user-error "Hammy already started: %s" (hammy-format hammy)))
+  (run-hook-with-args 'hammy-start-hook hammy)
+  (when (hammy-before hammy)
+    (funcall (hammy-elapsed hammy) hammy))
+  (hammy-next hammy duration)
+  ;; (push hammy hammy-active)
   hammy)
 
-(cl-defun hammy-announce (message hammy &key after-interval before-interval)
-  "Announce MESSAGE for HAMMY."
-  (pcase-let (((cl-struct hammy-hammy current-interval current-duration) hammy))
-    (message "%s  (Timer:%s%s%s%s%s%s)"
-             message
-             (hammy-hammy-name hammy)
-             (if after-interval
-                 (format "  Interval ended:%s"
-                         ;; FIXME: Also add seconds, but doing this for
-                         ;; each interval gets confusing since we can't
-                         ;; just call the length function again...or can
-                         ;; we?
-                         (hammy-interval-name after-interval))
-               "")
-             (if before-interval
-                 (format "  Interval ended:%s"
-                         ;; FIXME: Also add seconds, but doing this for
-                         ;; each interval gets confusing since we can't
-                         ;; just call the length function again...or can
-                         ;; we?
-                         (hammy-interval-name before-interval))
-               "")
-             (if current-interval
-                 (format "  Current interval:%s" (hammy-interval-name current-interval))
-               "")
-             (if current-duration
-                 ;; FIXME: Upscale units.
-                 (format "  Current duration:%s seconds" current-duration)
-               "")
-             (format "  Cycles:%s" (hammy-hammy-cycles hammy)))))
+(defmacro hammy-run-place (place &rest args)
+  `(cl-typecase ,place
+     (function (funcall ,place ,@args))
+     (null nil)
+     (list (dolist (fn ,place)
+             (funcall fn ,@args)))))
 
-(defun hammy-complete ()
-  "Return an active Hammy selected with completion."
-  (let ((hammys (hammy--active-timers)))
-    (pcase (length hammys)
-      (0 (user-error "No active Hammys"))
-      (1 (car (timer--args (car hammys))))
-      (_ (let* ((selected-timer-name
-                 (completing-read "Stop timer: "
-                                  (mapcar (lambda (timer)
-                                            (hammy-hammy-name (car (timer--args timer))))
-                                          hammys)
-                                  nil t)))
-           (car
-            (timer--args
-             (cl-find selected-timer-name timer-list
-                      :test #'equal
-                      :key (lambda (timer)
-                             (when (hammy-hammy-p (car (timer--args timer)))
-                               (hammy-hammy-name (car (timer--args timer)))))))))))))
+(defun hammy-next (hammy &optional duration)
+  "FIXME: Docstring."
+  (unless (and (= 0 (hammy-cycles hammy))
+               ;; TODO: Are both of these tests necessary?
+               (null (hammy-elapsed hammy))
+               (null (hammy-interval hammy)))
+    ;; Hammy already started, interval completed.
+    (push (hammy-interval hammy) (hammy-elapsed hammy))
+    (run-hook-with-args 'hammy-interval-hook hammy
+                        (format "Interval ended: %s" (hammy-interval-name (hammy-interval hammy))))
+    (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
+    (when (equal (hammy-interval hammy)
+                 (ring-ref (hammy-intervals hammy)
+                           (1- (ring-length (hammy-intervals hammy)))))
+      ;; Cycle completed.
+      (cl-incf (hammy-cycles hammy))
+      (run-hook-with-args 'hammy-cycle-hook hammy)))
+  (if (and (hammy-complete-p hammy)
+           (funcall (hammy-complete-p hammy) hammy))
+      ;; Hammy complete.
+      (progn
+        (setf (hammy-interval hammy) nil)
+        (run-hook-with-args 'hammy-complete-hook hammy)
+        (hammy-run-place (hammy-after hammy) hammy)
+        ;; (setf hammy-active (remove hammy hammy-active))
+        )
+    ;; Hammy not complete: start next interval.
+    (pcase-let* (((cl-struct hammy interval) hammy)
+                 (next-interval (if interval
+                                    (ring-next (hammy-intervals hammy) interval)
+                                  (ring-ref (hammy-intervals hammy) 0)))
+                 (next-duration (or duration
+                                    (cl-etypecase (hammy-interval-length next-interval)
+                                      (number (hammy-interval-length next-interval))
+                                      (function (condition-case _err
+                                                    (funcall (hammy-interval-length next-interval) hammy)
+                                                  (hammy-complete
+                                                   (run-hook-with-args 'hammy-complete-hook hammy)
+                                                   (message "Hammy is over!  (%s)" (hammy-name hammy))
+                                                   nil)))))))
+      (setf (hammy-interval hammy) next-interval
+            (hammy-current-duration hammy) next-duration)
+      (when next-duration
+        (hammy-run-place (hammy-interval-before next-interval) hammy)
+        (run-hook-with-args 'hammy-interval-hook hammy
+                            (format "Interval started: %s (%s seconds)"
+                                    (hammy-interval-name (hammy-interval hammy))
+                                    (hammy-current-duration hammy)))
+        (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))
+  hammy)
 
-(defun hammy--active-timers ()
-  "Return any active Emacs timers which are Hammys."
-  (cl-remove-if-not (lambda (timer)
-                      (equal #'hammy-run (timer--function timer)))
-                    timer-list))
+(defun hammy-format (hammy &optional message)
+  "Return formatted status for HAMMY, optionally with MESSAGE."
+  (let* ((interval (cond ((hammy-interval hammy)
+                          (format "%s (%s seconds)"
+                                  ;; FIXME: Human-format duration.
+                                  (hammy-interval-name (hammy-interval hammy))
+                                  (hammy-current-duration hammy)))
+                         ((and (hammy-complete-p hammy)
+                               (funcall (hammy-complete-p hammy) hammy))
+                          "Completed.")
+                         (t
+                          "None")))
+         (message (if message (format "  Message:%S" message) "")))
+    (format "Hammy (%s): Interval:%s  Cycles:%s%s"
+            (hammy-name hammy) 
+            interval
+            (hammy-cycles hammy)
+            message)))
+
+(defun hammy-log (hammy &optional message)
+  "Log MESSAGE for HAMMY to log buffer."
+  (let ((inhibit-read-only t))
+    (with-current-buffer (hammy--log-buffer)
+      (save-excursion
+        (goto-char (point-max))
+        (insert (format-time-string "%Y-%m-%d %H:%M:%S  ") (hammy-format hammy message) "\n")))))
+
+(defun hammy--log-buffer ()
+  "Return Hammy log buffer."
+  (with-current-buffer (get-buffer-create hammy-log-buffer-name)
+    (read-only-mode)
+    (current-buffer)))
+
+(defun hammy-view-log ()
+  "Show Hammy log buffer."
+  (interactive)
+  (pop-to-buffer (hammy--log-buffer)))
+
+(defun hammy-complete (prompt hammys)
+  "Return one of HAMMYS selected with completion."
+  (pcase (length hammys)
+    (0 nil)
+    (_ (let* ((selected-hammy-name
+               (completing-read prompt (mapcar #'hammy-name hammys)
+                                nil t)))
+         (cl-find selected-hammy-name hammys
+                  :test #'equal :key #'hammy-name)))))
+
+(defun hammy-announce (hammy message)
+  (message "Hammy (%s): %s"
+           (hammy-name hammy) message))
+
+;;;; Notifications
+
+(require 'notifications)
+
+(defun hammy-notify (hammy &optional message)
+  (notifications-notify :title (format "Hammy (%s)"
+                                       (hammy-name hammy))
+                        :body (or message (hammy-format hammy))))
 
 ;;;; Footer
 

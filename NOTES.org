@@ -33,3 +33,14 @@ Permission is granted to copy, distribute and/or modify this document under the 
 #+begin_quote
 Permission is granted to copy, distribute and/or modify this document under the terms of the GNU Free Documentation License, Version 1.2 or any later version published by the Free Software Foundation; with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A copy of the license is included in the section entitled GNU Free Documentation License. Subject to disclaimers.
 #+end_quote
+* Non-sexp syntax
+:PROPERTIES:
+:ID:       452d3bf2-8a6e-44a6-9f6b-5052f20b25fe
+:END:
+
+Could be something like:
+
+#+begin_src elisp
+  "Play=5-15s;Work=5-45s,stop"
+#+end_src
+
