@@ -127,6 +127,7 @@ ARGS, these functions are available to be called:
                          (hammy-cycles hammy))
                  (climb (from to &key descend)
                         ;; FIXME: Make arguments optional.
+                        ;; TODO: Step argument (e.g. increase/decrease by N seconds).
                         (lambda (hammy)
                           (let* ((apex (/ (duration to)
                                           (duration from)))
@@ -268,7 +269,6 @@ If paused, resume it.  If running, pause it."
 If DURATION, set its first interval to last that many seconds."
   (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))))
   (unless (and (= 0 (hammy-cycles hammy))
-               ;; TODO: Are both of these tests necessary?
                (null (hammy-elapsed hammy))
                (null (hammy-interval hammy)))
     (user-error "Hammy already started: %s" (hammy-format hammy)))
@@ -289,7 +289,6 @@ If DURATION, set its first interval to last that many seconds."
 (defun hammy-next (hammy &optional duration)
   "FIXME: Docstring."
   (unless (and (= 0 (hammy-cycles hammy))
-               ;; TODO: Are both of these tests necessary?
                (null (hammy-elapsed hammy))
                (null (hammy-interval hammy)))
     ;; Hammy already started, interval completed.
@@ -341,7 +340,6 @@ If DURATION, set its first interval to last that many seconds."
   "Return formatted status for HAMMY, optionally with MESSAGE."
   (let* ((interval (cond ((hammy-interval hammy)
                           (format "%s (%s seconds)"
-                                  ;; FIXME: Human-format duration.
                                   (hammy-interval-name (hammy-interval hammy))
                                   (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
                          ((and (hammy-complete-p hammy)
