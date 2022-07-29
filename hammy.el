@@ -23,7 +23,12 @@
 
 ;;; Commentary:
 
-;; TODO: Pausing.
+;; This library provides programmable, interactive interval timers for
+;; Emacs.  They can be used, e.g. to alternate between working and
+;; resting periods, to remind yourself to stretch your legs, etc.
+;; Timers, called "hammys," are easily defined by the user to behave
+;; as desired, and they can be integrated into other programs by
+;; calling Lisp functions in the hammys' definitions.
 
 ;;;; FAQ
 
@@ -33,6 +38,9 @@
 ;; timers, which are used in the implementation.  And besides, 🐹!
 
 ;;; Code:
+
+;; TODO: Pausing.
+;; TODO: Summarize logged interval times.
 
 ;;;; Requirements
 
