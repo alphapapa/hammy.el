@@ -45,12 +45,13 @@
 
 (cl-defstruct hammy
   (name "" :type 'string) (documentation "" :documentation "Documentation.")
-  (elapsed nil :documentation "List of elapsed intervals."
-           ;; FIXME: This.
-           )
+  (elapsed nil :documentation "List of elapsed intervals.
+Each element is a list of three elements: the interval, the time
+it began, and the time it ended.")
   (cycles 0 :documentation "Number of times the timer has gone through a cycle of all intervals.")
   (intervals nil :documentation "List of defined intervals.")
   (interval nil :documentation "Current interval, if any.")
+  (interval-start-time nil :documentation "Time at which the current interval started.")
   (current-duration)
   (last-duration nil :documentation "Length in seconds of last interval.")
   (timer nil :documentation "Emacs timer for this timer.")
@@ -267,6 +268,7 @@ If already running, restarts it."
     (setf (hammy-cycles hammy) 0
           (hammy-elapsed hammy) nil
           (hammy-interval hammy) nil
+          (hammy-interval-start-time hammy) nil
           (hammy-overduep hammy) nil)
     (when runningp
       (hammy-start hammy))
@@ -311,7 +313,7 @@ If DURATION, set its first interval to last that many seconds."
                  (null (hammy-elapsed hammy))
                  (null (hammy-interval hammy)))
       ;; Hammy already started, interval completed.
-      (push (hammy-interval hammy) (hammy-elapsed hammy))
+      (push (list (hammy-interval hammy) (hammy-interval-start-time hammy) (current-time)) (hammy-elapsed hammy))
       (run-hook-with-args 'hammy-interval-hook hammy
                           (format "Interval ended: %s" (hammy-interval-name (hammy-interval hammy))))
       (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
@@ -353,6 +355,7 @@ If DURATION, set its first interval to last that many seconds."
               (hammy-run-place (hammy-interval-advance (hammy-interval hammy)) hammy))
           ;; Advancing.
           (setf (hammy-interval hammy) next-interval
+                (hammy-interval-start-time hammy) (current-time)
                 (hammy-current-duration hammy) next-duration
                 (hammy-overduep hammy) nil)
           (when next-duration
@@ -418,8 +421,9 @@ If DURATION, set its first interval to last that many seconds."
 ;;;; Mode
 
 (defun hammy--mode-line-update (&rest _ignore)
-  "Force updating of all mode lines."
-  (force-mode-line-update 'all))
+  "Force updating of all mode lines when a hammy is active."
+  (when hammy-active
+    (force-mode-line-update 'all)))
 
 (define-minor-mode hammy-mode
   "Show active hammy in the mode line."
@@ -428,9 +432,15 @@ If DURATION, set its first interval to last that many seconds."
   (let ((lighter '(hammy-mode (:eval (hammy-mode-lighter)))))
     (if hammy-mode
         (progn
+          (when hammy-mode-update-mode-line-continuously
+            ;; TODO: Only run this timer when a hammy is running.
+            (setf hammy-mode-update-mode-line-timer (run-with-timer 1 1 #'hammy--mode-line-update)))
           (add-hook 'hammy-interval-hook #'hammy--mode-line-update)
           ;; Avoid adding the lighter multiple times if the mode is activated again.
           (cl-pushnew (list lighter) mode-line-misc-info :test #'equal))
+      (when hammy-mode-update-mode-line-timer
+        (cancel-timer hammy-mode-update-mode-line-timer)
+        (setf hammy-mode-update-mode-line-timer nil))
       (remove-hook 'hammy-interval-hook #'hammy--mode-line-update)
       (setf mode-line-misc-info
             (delete lighter mode-line-misc-info)))))
@@ -458,22 +468,41 @@ If DURATION, set its first interval to last that many seconds."
 (defface hammy-mode-lighter-overdue '((t (:inherit error)))
   "Used when no hammy is active.")
 
+(defcustom hammy-mode-update-mode-line-continuously t
+  "Update the mode line every second while a hammy is running."
+  :type 'boolean)
+
+(defvar hammy-mode-update-mode-line-timer nil
+  "Timer used to update the mode line.")
+
 (defun hammy-mode-lighter ()
   ;; NOTE: This actually only shows the first active hammy, but it
   ;; seems unlikely that users will use more than one
   ;; simultaneously.
   (let ((hammy (car (cl-remove-if-not #'hammy-timer hammy-hammys))))
     (if hammy
-        (format "%s:%s(%s:%s) "
-                (concat (propertize hammy-mode-lighter-prefix
-                                    'face 'hammy-mode-lighter-prefix-active)
-                        (when (hammy-overduep hammy)
-                          (propertize hammy-mode-lighter-overdue
-                                      'face 'hammy-mode-lighter-overdue)))
-                (hammy-name hammy)
-                (propertize (hammy-interval-name (hammy-interval hammy))
-                            'face (hammy-interval-face (hammy-interval hammy)))
-                (ts-human-format-duration (hammy-current-duration hammy) 'abbr))
+        (let ((remaining (abs
+                          ;; We use the absolute value because
+                          ;; `ts-human-format-duration' returns 0 for
+                          ;; negative numbers.
+                          (- (hammy-current-duration hammy)
+                             (float-time (time-subtract (current-time)
+                                                        (hammy-interval-start-time hammy)))))))
+          (format "%s:%s(%s:%s) "
+                  (concat (propertize hammy-mode-lighter-prefix
+                                      'face 'hammy-mode-lighter-prefix-active)
+                          (when (hammy-overduep hammy)
+                            (propertize hammy-mode-lighter-overdue
+                                        'face 'hammy-mode-lighter-overdue)))
+                  (hammy-name hammy)
+                  (propertize (hammy-interval-name (hammy-interval hammy))
+                              'face (hammy-interval-face (hammy-interval hammy)))
+                  (concat (if (hammy-overduep hammy)
+                              ;; We use the negative sign when
+                              ;; counting down to the end of an
+                              ;; interval (i.e. "T-minus...") .
+                              "+" "-")
+                          (ts-human-format-duration remaining 'abbr))))
       ;; No active hammys.
       (when hammy-mode-always-show-lighter
         (concat (propertize hammy-mode-lighter-prefix
