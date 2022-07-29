@@ -1,25 +1,82 @@
 #+TITLE: Hammy.el
 
-Work-in-progress.
+Hammy provides programmable, interactive interval timers for Emacs.  They can be used, e.g. to alternate between working and resting periods, to remind yourself to stretch your legs, etc.  Timers, known as "hammys", are easily defined by the user to behave as desired, and they can be integrated into other programs by calling Lisp functions in the hammys' definitions.
 
-Example:
+* Usage
+:PROPERTIES:
+:ID:       fae3cf22-c6d7-4d60-95b7-f3d30941959f
+:END:
+
+First, define a hammy timer.  For example, this one reminds you to stand up every so often:
 
 #+begin_src elisp
-  (defvar my-hammy
-    (make-hammy
-     :name "Flywheel"
-     :documentation "Get your momentum going!"
-     :intervals
-     (list (interval :name "Play"
-                     :length (duration "5 minutes")
-                     :after (announce "Play time is over!  Get back to work!"))
-           (interval :name "Work"
-                     :length (climb "5 minutes" "45 minutes"
-                                    :descend t :then 'stop)
-                     :after (announce "Work time is over!  Get back to play!")))))
-
-  (hammy-run my-hammy)
-
-  ;; Then you can use interactive commands like `hammy-stop',
-  ;; `hammy-toggle', `hammy-reset'.
+  (hammy-define "🐮"
+    :documentation "Don't forget to stretch your legs."
+    :intervals
+    (list (interval :name "💺"
+                    :length (duration "45 minutes")
+                    :face 'font-lock-type-face
+                    :before (list (announce "Whew!")
+                                  (notify "Whew!"))
+                    :advance (list (announce "Time to stretch your legs!")
+                                   (notify "Time to stretch your legs!")
+                                   (do (play-sound-file "~/Misc/Sounds/mooove-it.wav"))))
+          (interval :name "🤸"
+                    :length (duration "5 minutes")
+                    :face 'font-lock-builtin-face
+                    :before (list (announce "Mooove it!")
+                                  (notify "Mooove it!"))
+                    :advance (list (announce "Time for a sit-down...")
+                                   (notify "Time for a sit-down...")
+                                   (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
 #+end_src
+
+Then you can use these commands, which will prompt you to choose a defined hammy:
+
+| ~hammy-start~  | Start a hammy.                                                                            |
+| ~hammy-next~   | Advance to the next interval of a hammy (when it's defined to not advance automatically). |
+| ~hammy-toggle~ | Pause or unpause a hammy.                                                                 |
+| ~hammy-reset~  | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).  |
+| ~hammy-stop~   | Stop a hammy.                                                                             |
+
+You may also use these commands:
+
+| ~hammy-mode~     | Show the current hammy in the mode-line. |
+| ~hammy-view-log~ | Show the log buffer.                     |
+
+Here's a more interesting example, a "flywheel timer" (so called because it helps to build momentum) which interleaves rest periods with gradually lengthening work periods.
+
+#+begin_src elisp
+  (hammy-define "Flywheel"
+    :documentation "Get your momentum going!"
+    :intervals
+    (list (interval :name "Play"
+                    :face 'font-lock-type-face
+                    :length (duration "5 minutes")
+                    :before (list (announce "Play time!")
+                                  (notify "Play time!"))
+                    :advance (list (announce "Play time is over!")
+                                   (notify "Play time is over!")
+                                   (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav"))))
+          (interval :name "Work"
+                    :face 'font-lock-builtin-face
+                    :length (climb "5 minutes" "45 minutes"
+                                   :descend t)
+                    :before (list (announce "Work time!")
+                                  (notify "Work time!"))
+                    :advance (list (announce "Work time is over!")
+                                   (notify "Work time is over!")
+                                   (do (play-sound-file "~/Misc/Sounds/relax.wav")))))
+    :after (do (play-sound-file "~/Misc/Sounds/all-done.wav"))
+    :complete-p (lambda (hammy)
+                  (and (> (hammy-cycles hammy) 1)
+                       (hammy-interval hammy)
+                       (equal "Work" (hammy-interval-name (hammy-interval hammy)))
+                       (equal (duration "5 minutes") (hammy-current-duration hammy)))))
+#+end_src
+
+Note the use of ~:descend t~ in the ~:length~ slots: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
+
+* License
+
+GPLv3
