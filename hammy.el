@@ -415,6 +415,10 @@ If DURATION, set its first interval to last that many seconds."
   "Show lighter even when no hammys are running."
   :type 'string)
 
+(defcustom hammy-mode-lighter-suffix-inactive "None"
+  "Shown when no hammys are running."
+  :type 'string)
+
 (defface hammy-mode-lighter-prefix-inactive '((t (:inherit error)))
   "Used when no hammy is active.")
 (defface hammy-mode-lighter-prefix-active '((t (:inherit font-lock-type-face)))
@@ -437,7 +441,9 @@ If DURATION, set its first interval to last that many seconds."
       (when hammy-mode-always-show-lighter
         (concat (propertize hammy-mode-lighter-prefix
                             'face 'hammy-mode-lighter-prefix-inactive)
-                ":None ")))))
+                (if hammy-mode-lighter-suffix-inactive
+                    (concat ":" hammy-mode-lighter-suffix-inactive))
+                " ")))))
 
 ;;;; Notifications
 
