@@ -184,27 +184,6 @@ Define a hammy with `hammy-define'.")
 (defvar hammy-active nil
   "List of active hammys.")
 
-(hammy-define "Flywheel"
-  :documentation "Get your momentum going!"
-  :intervals (list (interval :name "Play"
-                             :length (climb "5 minutes" "15 minutes")
-                             :before (list (announce "Play time!")
-                                           (notify "Play time!"))
-                             :advance (list (announce "Play time is over!")
-                                            (notify "Play time is over!")))
-                   (interval :name "Work"
-                             :length (climb "5 minutes" "45 minutes"
-                                            :descend t)
-                             :before (list (announce "Work time!")
-                                           (notify "Work time!"))
-                             :advance (list (announce "Work time is over!")
-                                            (notify "Work time is over!"))))
-  :complete-p (lambda (hammy)
-                (and (> (hammy-cycles hammy) 1)
-                     (hammy-interval hammy)
-                     (equal "Work" (hammy-interval-name (hammy-interval hammy)))
-                     (equal (duration "45 minutes") (hammy-current-duration hammy)))))
-
 ;;;; Customization
 
 (defgroup hammy nil
@@ -291,7 +270,8 @@ If paused, resume it.  If running, pause it."
 (defun hammy-start (hammy &optional duration)
   "Start HAMMY and return it.
 If DURATION, set its first interval to last that many seconds."
-  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))))
+  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
+                     current-prefix-arg))
   (unless (and (= 0 (hammy-cycles hammy))
                (null (hammy-elapsed hammy))
                (null (hammy-interval hammy)))
@@ -523,6 +503,52 @@ If DURATION, set its first interval to last that many seconds."
   (notifications-notify :title (format "Hammy (%s)"
                                        (hammy-name hammy))
                         :body (or message (hammy-format hammy))))
+
+;;;; Hammys
+
+;; Pre-defined for convenience.
+
+(hammy-define "Flywheel"
+  :documentation "Get your momentum going!"
+  :intervals (list (interval :name "Rest"
+                             :face 'font-lock-type-face
+                             :length (duration "5 minutes")
+                             :before (list (announce "Rest time!")
+                                           (notify "Rest time!"))
+                             :advance (list (announce "Rest time is over!")
+                                            (notify "Rest time is over!")))
+                   (interval :name "Work"
+                             :face 'font-lock-builtin-face
+                             :length (climb "5 minutes" "45 minutes"
+                                            :descend t)
+                             :before (list (announce "Work time!")
+                                           (notify "Work time!"))
+                             :advance (list (announce "Work time is over!")
+                                            (notify "Work time is over!"))))
+  :after (list (announce "Flywheel session complete!")
+               (notify "Flywheel session complete!"))
+  :complete-p (lambda (hammy)
+                (and (> (hammy-cycles hammy) 1)
+                     (hammy-interval hammy)
+                     (equal "Work" (hammy-interval-name (hammy-interval hammy)))
+                     (equal (duration "5 minutes") (hammy-current-duration hammy)))))
+
+(hammy-define "Move"
+  :documentation "Don't forget to stretch your legs!"
+  :intervals (list (interval :name "💺"
+                             :length (duration "45 minutes")
+                             :face 'font-lock-type-face
+                             :before (list (announce "Whew!")
+                                           (notify "Whew!"))
+                             :advance (list (announce "Time to stretch your legs!")
+                                            (notify "Time to stretch your legs!")))
+                   (interval :name "🤸"
+                             :length (duration "5 minutes")
+                             :face 'font-lock-builtin-face
+                             :before (list (announce "Move it!")
+                                           (notify "Move it!"))
+                             :advance (list (announce "Time for a sit-down...")
+                                            (notify "Time for a sit-down...")))))
 
 ;;;; Footer
 

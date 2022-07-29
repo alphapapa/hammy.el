@@ -83,7 +83,7 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                        (equal (duration "5 minutes") (hammy-current-duration hammy)))))
 #+end_src
 
-Note the use of ~:descend t~ in the ~:length~ slots: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
+Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:length~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
 
 * License
 
