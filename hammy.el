@@ -167,6 +167,13 @@ ARGS, these functions are available to be called:
          (push hammy hammy-hammys)
          hammy))))
 
+(defmacro hammy-run-place (place &rest args)
+  `(cl-typecase ,place
+     (function (funcall ,place ,@args))
+     (null nil)
+     (list (dolist (fn ,place)
+             (funcall fn ,@args)))))
+
 ;;;; Variables
 
 (defvar hammy-hammys nil
@@ -180,15 +187,20 @@ Define a hammy with `hammy-define'.")
   :documentation "Get your momentum going!"
   :intervals (list (interval :name "Play"
                              :length (climb "5 minutes" "15 minutes")
-                             :before (announce "Play time!")
-                             :after (announce "Play time is over!"))
+                             :before (list (announce "Play time!")
+                                           (notify "Play time!"))
+                             :advance (list (announce "Play time is over!")
+                                            (notify "Play time is over!")))
                    (interval :name "Work"
                              :length (climb "5 minutes" "45 minutes"
                                             :descend t)
-                             :before (announce "Work time!")
-                             :after (announce "Work time is over!")))
+                             :before (list (announce "Work time!")
+                                           (notify "Work time!"))
+                             :advance (list (announce "Work time is over!")
+                                            (notify "Work time is over!"))))
   :complete-p (lambda (hammy)
-                (and (hammy-interval hammy)
+                (and (> (hammy-cycles hammy) 1)
+                     (hammy-interval hammy)
                      (equal "Work" (hammy-interval-name (hammy-interval hammy)))
                      (equal (duration "45 minutes") (hammy-current-duration hammy)))))
 
@@ -283,18 +295,10 @@ If DURATION, set its first interval to last that many seconds."
                (null (hammy-interval hammy)))
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
-  (when (hammy-before hammy)
-    (funcall (hammy-elapsed hammy) hammy))
+  (hammy-run-place (hammy-before hammy) hammy)
   (hammy-next hammy duration :advance t)
   (push hammy hammy-active)
   hammy)
-
-(defmacro hammy-run-place (place &rest args)
-  `(cl-typecase ,place
-     (function (funcall ,place ,@args))
-     (null nil)
-     (list (dolist (fn ,place)
-             (funcall fn ,@args)))))
 
 (cl-defun hammy-next (hammy &optional duration &key advance)
   "Advance to HAMMY's next interval."
