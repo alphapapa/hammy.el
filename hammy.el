@@ -1,4 +1,4 @@
-;;; hammy.el --- Programmable, periodic timers for working and taking breaks  -*- lexical-binding: t; -*-
+;;; hammy.el --- Programmable interval timers (e.g. for working and resting)  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022  Adam Porter
 
@@ -30,7 +30,7 @@
 ;; Q: Why are timers called hammys?  Isn't that silly?
 
 ;; A: Probably.  But it also helps to distinguish them from Emacs's
-;; timers, which are used in the implementation.
+;; timers, which are used in the implementation.  And besides, 🐹!
 
 ;;; Code:
 
@@ -406,13 +406,16 @@ If DURATION, set its first interval to last that many seconds."
 
 (defun hammy-complete (prompt hammys)
   "Return one of HAMMYS selected with completion."
-  (pcase (length hammys)
-    (0 nil)
-    (_ (let* ((selected-hammy-name
-               (completing-read prompt (mapcar #'hammy-name hammys)
-                                nil t)))
-         (cl-find selected-hammy-name hammys
-                  :test #'equal :key #'hammy-name)))))
+  (cl-labels ((describe (hammy)
+                        (format "%s (%s)"
+                                (hammy-name hammy)
+                                (hammy-documentation hammy))))
+    (pcase (length hammys)
+      (0 nil)
+      (_ (let* ((map (cl-loop for hammy in hammys
+                              collect (cons (describe hammy) hammy)))
+                (description (completing-read prompt map nil t)))
+           (alist-get description map nil nil #'equal))))))
 
 (defun hammy-announce (hammy message)
   (message "Hammy (%s): %s"
