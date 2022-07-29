@@ -491,12 +491,13 @@ If DURATION, set its first interval to last that many seconds."
                           (- (hammy-current-duration hammy)
                              (float-time (time-subtract (current-time)
                                                         (hammy-interval-start-time hammy)))))))
-          (format "%s:%s(%s:%s) "
-                  (concat (propertize hammy-mode-lighter-prefix
-                                      'face 'hammy-mode-lighter-prefix-active)
-                          (when (hammy-overduep hammy)
-                            (propertize hammy-mode-lighter-overdue
-                                        'face 'hammy-mode-lighter-overdue)))
+          (format "%s%s%s(%s:%s) "
+                  (propertize hammy-mode-lighter-prefix
+                              'face 'hammy-mode-lighter-prefix-active)
+                  (if (hammy-overduep hammy)
+                      (propertize hammy-mode-lighter-overdue
+                                  'face 'hammy-mode-lighter-overdue)
+                    ":")
                   (hammy-name hammy)
                   (propertize (hammy-interval-name (hammy-interval hammy))
                               'face (hammy-interval-face (hammy-interval hammy)))

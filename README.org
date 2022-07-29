@@ -10,7 +10,7 @@ Hammy provides programmable, interactive interval timers for Emacs.  They can be
 First, define a hammy timer.  For example, this one reminds you to stand up every so often:
 
 #+begin_src elisp
-  (hammy-define "🐮"
+  (hammy-define "Move"
     :documentation "Don't forget to stretch your legs."
     :intervals
     (list (interval :name "💺"
@@ -44,7 +44,15 @@ You may also use these commands:
 | ~hammy-mode~     | Show the current hammy in the mode-line. |
 | ~hammy-view-log~ | Show the log buffer.                     |
 
-Here's a more interesting example, a "flywheel timer" (so called because it helps to build momentum) which interleaves rest periods with gradually lengthening work periods.
+The mode-line looks like this (when no hammy is active, when one is active, and when one is "overdue", waiting for the user to manually advance to the next interval):
+
+[[images/mode-line.png]]
+
+You can see the lighter prefix (~🐹~), the status (~:~, or ~!~ when overdue), the current hammy's name (~Move~), the current interval's name (~💺~), and the time elapsed (prefixed by ~-~ when counting down, and ~+~ when overdue and counting up).
+
+Of course, if you have something against hamsters, the lighter prefix can be customized, as well as various faces for parts of the mode line.  See ~M-x customize-group RET hammy RET~.
+
+Here's a more interesting example, a "flywheel timer" (so called because it helps to build momentum), which interleaves rest periods with gradually lengthening work periods.
 
 #+begin_src elisp
   (hammy-define "Flywheel"
