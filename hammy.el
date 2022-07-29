@@ -102,59 +102,64 @@ ARGS, these functions are available to be called:
   ;; the user would have to quote the argument to prevent evaluation,
   ;; which would likely be confusing to many users.  So, for now, at
   ;; least, it will be a macro.
-  `(cl-labels ((announce (message)
+  `(cl-macrolet ((do (form)
+                     `(lambda (_hammy)
+                        ,form)))
+     (cl-labels ((announce (message)
+                           (lambda (hammy)
+                             (hammy-announce hammy message)))
+                 (notify (message)
                          (lambda (hammy)
-                           (hammy-announce hammy message)))
-               (notify (message)
-                       (lambda (hammy)
-                         (hammy-notify hammy message)))
-               (duration (interval)
-                         (timer-duration interval) )
-               (interval (&rest args)
-                         (apply #'make-hammy-interval args))
-               (num-intervals (hammy)
-                              (ring-length (hammy-intervals hammy)))
-               (elapsed (hammy)
-                        (hammy-elapsed hammy))
-               (cycles (hammy)
-                       (hammy-cycles hammy))
-               (climb (from to &key descend)
-                      ;; FIXME: Make arguments optional.
-                      (lambda (hammy)
-                        (let* ((apex (/ (duration to)
-                                        (duration from)))
-                               (duration (if (< (cycles hammy) apex)
-                                             ;; Spin up!
-                                             (min (* (pcase (cycles hammy)
-                                                       (0 1)
-                                                       (cycles (1+ cycles)))
-                                                     (duration from))
-                                                  (duration to))
-                                           ;; Spin down...
-                                           (pcase-exhaustive descend
-                                             (`nil (min (* (pcase (cycles hammy)
+                           (hammy-notify hammy message)))
+                 ;; (do (form)
+                 ;;     `(lambda (hammy)
+                 ;;        (ignore hammy)
+                 ;;        ,form))
+                 (duration (interval)
+                           (timer-duration interval) )
+                 (interval (&rest args)
+                           (apply #'make-hammy-interval args))
+                 (num-intervals (hammy)
+                                (ring-length (hammy-intervals hammy)))
+                 (elapsed (hammy)
+                          (hammy-elapsed hammy))
+                 (cycles (hammy)
+                         (hammy-cycles hammy))
+                 (climb (from to &key descend)
+                        ;; FIXME: Make arguments optional.
+                        (lambda (hammy)
+                          (let* ((apex (/ (duration to)
+                                          (duration from)))
+                                 (duration (if (< (cycles hammy) apex)
+                                               ;; Spin up!
+                                               (min (* (pcase (cycles hammy)
+                                                         (0 1)
+                                                         (cycles (1+ cycles)))
+                                                       (duration from))
+                                                    (duration to))
+                                             ;; Spin down...
+                                             (pcase-exhaustive descend
+                                               (`nil (min (* (pcase (cycles hammy)
+                                                               (0 1)
+                                                               (height (1+ height)))
+                                                             (duration from))
+                                                          (duration to)))
+                                               (`t (hammy-log hammy (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s"
+                                                                            (cycles hammy) apex from to))
+                                                   (min (* (pcase (- (* 2 apex) (cycles hammy))
                                                              (0 1)
-                                                             (height (1+ height)))
+                                                             (height (1- height)))
                                                            (duration from))
-                                                        (duration to)))
-                                             (`t (hammy-log hammy (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s"
-                                                                          (cycles hammy) apex from to))
-                                                 (min (* (pcase (- (* 2 apex) (cycles hammy))
-                                                           (0 1)
-                                                           (height (1- height)))
-                                                         (duration from))
-                                                      (duration to)))))))
-                          duration
-                          
-                          ))))
-     (let* ((hammy (make-hammy :name ,name ,@args))
-            (ring (make-ring (length (hammy-intervals hammy)))))
-       (dolist (interval (hammy-intervals hammy))
-         (ring-insert-at-beginning ring interval))
-       (setf (hammy-intervals hammy) ring)
-       (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
-       (push hammy hammy-hammys)
-       hammy)))
+                                                        (duration to)))))))
+                            duration))))
+       (let* ((hammy (make-hammy :name ,name ,@args))
+              (ring (make-ring (length (hammy-intervals hammy)))))
+         (dolist (interval (hammy-intervals hammy))
+           (ring-insert-at-beginning ring interval))
+         (setf (hammy-intervals hammy) ring)
+         (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
+         (push hammy hammy-hammys)
+         hammy))))
 
 ;;;; Variables
 
@@ -386,6 +391,10 @@ If DURATION, set its first interval to last that many seconds."
 
 ;;;; Mode
 
+(defun hammy--mode-line-update (&rest _ignore)
+  "Force updating of all mode lines."
+  (force-mode-line-update 'all))
+
 (define-minor-mode hammy-mode
   "Show active hammy in the mode line."
   :global t
@@ -393,10 +402,10 @@ If DURATION, set its first interval to last that many seconds."
   (let ((lighter '(hammy-mode (:eval (hammy-mode-lighter)))))
     (if hammy-mode
         (progn
-          (add-hook 'hammy-interval-hook #'force-mode-line-update)
+          (add-hook 'hammy-interval-hook #'hammy--mode-line-update)
           ;; Avoid adding the lighter multiple times if the mode is activated again.
           (cl-pushnew (list lighter) mode-line-misc-info :test #'equal))
-      (remove-hook 'hammy-interval-hook #'force-mode-line-update)
+      (remove-hook 'hammy-interval-hook #'hammy--mode-line-update)
       (setf mode-line-misc-info
             (delete lighter mode-line-misc-info)))))
 
