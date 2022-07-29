@@ -62,7 +62,8 @@ Called with one argument, the hammy.  Called when the hammy's
 completion predicate returns non-nil.")
   (complete-p nil :documentation "Predicate that returns non-nil when hammy is complete.
 Called with one argument, the hammy.  Called after each interval
-is complete, before starting the next interval."))
+is complete, before starting the next interval.")
+  (overduep))
 
 (cl-defstruct hammy-interval
   (name "" :type 'string)
@@ -74,7 +75,11 @@ run in.")
   (before nil :documentation "Function called before interval begins.
 Called with one argument, the Hammy timer.")
   (after nil :documentation "Function called when interval ends.
-Called with one argument, the Hammy timer."))
+Called with one argument, the Hammy timer.")
+  (advance 'auto :documentation "How to advance to the next interval when this one ends.
+If nil, do so automatically.  Otherwise, a list of functions to
+call when the interval is ready to be advanced, and don't advance
+until the user calls `hammy-next'."))
 
 (define-error 'hammy-complete "Hammy is over!")
 
@@ -168,6 +173,9 @@ ARGS, these functions are available to be called:
   "List of defined hammys.
 Define a hammy with `hammy-define'.")
 
+(defvar hammy-active nil
+  "List of active hammys.")
+
 (hammy-define "Flywheel"
   :documentation "Get your momentum going!"
   :intervals (list (interval :name "Play"
@@ -222,9 +230,10 @@ Called with the hammy, and optionally a message."
   "Stop HAMMY timer.
 If QUIETLY, don't say so."
   (interactive
-   (list (or (hammy-complete "Stop hammy: " (cl-remove-if-not #'hammy-timer hammy-hammys))
+   (list (or (hammy-complete "Stop hammy: " hammy-active)
              (user-error "No active hammys"))))
   (pcase-let (((cl-struct hammy (timer internal-timer)) hammy))
+    (setf hammy-active (remove hammy hammy-active))
     (when internal-timer
       (cancel-timer internal-timer)
       (setf (hammy-timer hammy) nil)
@@ -245,7 +254,8 @@ If already running, restarts it."
       (hammy-stop hammy 'quietly))
     (setf (hammy-cycles hammy) 0
           (hammy-elapsed hammy) nil
-          (hammy-interval hammy) nil)
+          (hammy-interval hammy) nil
+          (hammy-overduep hammy) nil)
     (when runningp
       (hammy-start hammy))
     hammy))
@@ -275,8 +285,8 @@ If DURATION, set its first interval to last that many seconds."
   (run-hook-with-args 'hammy-start-hook hammy)
   (when (hammy-before hammy)
     (funcall (hammy-elapsed hammy) hammy))
-  (hammy-next hammy duration)
-  ;; (push hammy hammy-active)
+  (hammy-next hammy duration :advance t)
+  (push hammy hammy-active)
   hammy)
 
 (defmacro hammy-run-place (place &rest args)
@@ -286,54 +296,68 @@ If DURATION, set its first interval to last that many seconds."
      (list (dolist (fn ,place)
              (funcall fn ,@args)))))
 
-(defun hammy-next (hammy &optional duration)
-  "FIXME: Docstring."
-  (unless (and (= 0 (hammy-cycles hammy))
-               (null (hammy-elapsed hammy))
-               (null (hammy-interval hammy)))
-    ;; Hammy already started, interval completed.
-    (push (hammy-interval hammy) (hammy-elapsed hammy))
-    (run-hook-with-args 'hammy-interval-hook hammy
-                        (format "Interval ended: %s" (hammy-interval-name (hammy-interval hammy))))
-    (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
-    (when (equal (hammy-interval hammy)
-                 (ring-ref (hammy-intervals hammy)
-                           (1- (ring-length (hammy-intervals hammy)))))
-      ;; Cycle completed.
-      (cl-incf (hammy-cycles hammy))
-      (run-hook-with-args 'hammy-cycle-hook hammy)))
-  (if (and (hammy-complete-p hammy)
-           (funcall (hammy-complete-p hammy) hammy))
-      ;; Hammy complete.
-      (progn
-        (hammy-stop hammy 'quietly)
-        (run-hook-with-args 'hammy-complete-hook hammy)
-        (hammy-run-place (hammy-after hammy) hammy)
-        ;; (setf hammy-active (remove hammy hammy-active))
-        )
-    ;; Hammy not complete: start next interval.
-    (pcase-let* (((cl-struct hammy interval) hammy)
-                 (next-interval (if interval
-                                    (ring-next (hammy-intervals hammy) interval)
-                                  (ring-ref (hammy-intervals hammy) 0)))
-                 (next-duration (or duration
-                                    (cl-etypecase (hammy-interval-length next-interval)
-                                      (number (hammy-interval-length next-interval))
-                                      (function (condition-case _err
-                                                    (funcall (hammy-interval-length next-interval) hammy)
-                                                  (hammy-complete
-                                                   (run-hook-with-args 'hammy-complete-hook hammy)
-                                                   (message "Hammy is over!  (%s)" (hammy-name hammy))
-                                                   nil)))))))
-      (setf (hammy-interval hammy) next-interval
-            (hammy-current-duration hammy) next-duration)
-      (when next-duration
-        (hammy-run-place (hammy-interval-before next-interval) hammy)
-        (run-hook-with-args 'hammy-interval-hook hammy
-                            (format "Interval started: %s (%s seconds)"
-                                    (hammy-interval-name (hammy-interval hammy))
-                                    (hammy-current-duration hammy)))
-        (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))
+(cl-defun hammy-next (hammy &optional duration &key advance)
+  "Advance to HAMMY's next interval."
+  (interactive (list (hammy-complete "Advance hammy: " hammy-active) nil :advance t))
+  (cl-labels ((advancep
+               () (or (and (hammy-interval hammy)
+                           (eq 'auto (hammy-interval-advance (hammy-interval hammy))))
+                      advance)))
+    (unless (and (= 0 (hammy-cycles hammy))
+                 (null (hammy-elapsed hammy))
+                 (null (hammy-interval hammy)))
+      ;; Hammy already started, interval completed.
+      (push (hammy-interval hammy) (hammy-elapsed hammy))
+      (run-hook-with-args 'hammy-interval-hook hammy
+                          (format "Interval ended: %s" (hammy-interval-name (hammy-interval hammy))))
+      (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
+      (when (and (advancep)
+                 (equal (hammy-interval hammy)
+                        (ring-ref (hammy-intervals hammy)
+                                  (1- (ring-length (hammy-intervals hammy))))))
+        ;; Cycle completed.
+        (cl-incf (hammy-cycles hammy))
+        (run-hook-with-args 'hammy-cycle-hook hammy)))
+    (if (and (advancep)
+             (hammy-complete-p hammy)
+             (funcall (hammy-complete-p hammy) hammy))
+        ;; Hammy complete.
+        (progn
+          (hammy-stop hammy 'quietly)
+          (run-hook-with-args 'hammy-complete-hook hammy)
+          (hammy-run-place (hammy-after hammy) hammy)
+          (setf hammy-active (remove hammy hammy-active)))
+      ;; Hammy not complete: start next interval.
+      (pcase-let* (((cl-struct hammy interval) hammy)
+                   (next-interval (if interval
+                                      (ring-next (hammy-intervals hammy) interval)
+                                    (ring-ref (hammy-intervals hammy) 0)))
+                   (next-duration (or duration
+                                      (cl-etypecase (hammy-interval-length next-interval)
+                                        (number (hammy-interval-length next-interval))
+                                        (function (condition-case _err
+                                                      (funcall (hammy-interval-length next-interval) hammy)
+                                                    (hammy-complete
+                                                     (run-hook-with-args 'hammy-complete-hook hammy)
+                                                     (message "Hammy is over!  (%s)" (hammy-name hammy))
+                                                     nil)))))))
+        (if (not (advancep))
+            ;; Interval requires manual advancing.
+            (progn
+              (hammy-log hammy "Waiting for user to advance...")
+              (setf (hammy-overduep hammy) t)
+              (hammy-run-place (hammy-interval-advance (hammy-interval hammy)) hammy))
+          ;; Advancing.
+          (setf (hammy-interval hammy) next-interval
+                (hammy-current-duration hammy) next-duration
+                (hammy-overduep hammy) nil)
+          (when next-duration
+            (hammy-run-place (hammy-interval-before next-interval) hammy)
+            (run-hook-with-args 'hammy-interval-hook hammy
+                                (format "Interval started: %s (%s seconds)"
+                                        (hammy-interval-name (hammy-interval hammy))
+                                        (hammy-current-duration hammy)))
+            (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))))
   hammy)
 
 (defun hammy-format (hammy &optional message)
@@ -415,13 +439,19 @@ If DURATION, set its first interval to last that many seconds."
   "Show lighter even when no hammys are running."
   :type 'string)
 
+(defcustom hammy-mode-lighter-overdue "!"
+  "Shown when hammy is due to be manually advanced."
+  :type 'string)
+
 (defcustom hammy-mode-lighter-suffix-inactive "None"
   "Shown when no hammys are running."
   :type 'string)
 
-(defface hammy-mode-lighter-prefix-inactive '((t (:inherit error)))
+(defface hammy-mode-lighter-prefix-inactive '((t (:inherit warning)))
   "Used when no hammy is active.")
 (defface hammy-mode-lighter-prefix-active '((t (:inherit font-lock-type-face)))
+  "Used when no hammy is active.")
+(defface hammy-mode-lighter-overdue '((t (:inherit error)))
   "Used when no hammy is active.")
 
 (defun hammy-mode-lighter ()
@@ -431,8 +461,11 @@ If DURATION, set its first interval to last that many seconds."
   (let ((hammy (car (cl-remove-if-not #'hammy-timer hammy-hammys))))
     (if hammy
         (format "%s:%s(%s:%s) "
-                (propertize hammy-mode-lighter-prefix
-                            'face 'hammy-mode-lighter-prefix-active)
+                (concat (propertize hammy-mode-lighter-prefix
+                                    'face 'hammy-mode-lighter-prefix-active)
+                        (when (hammy-overduep hammy)
+                          (propertize hammy-mode-lighter-overdue
+                                      'face 'hammy-mode-lighter-overdue)))
                 (hammy-name hammy)
                 (propertize (hammy-interval-name (hammy-interval hammy))
                             'face (hammy-interval-face (hammy-interval hammy)))
