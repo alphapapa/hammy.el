@@ -1,6 +1,20 @@
 #+TITLE: Hammy.el
 
+#+HTML: <img src="images/mascot.png" align="right">
+
 Hammy provides programmable, interactive interval timers for Emacs.  They can be used, e.g. to alternate between working and resting periods, to remind yourself to stretch your legs, etc.  Timers, known as "hammys", are easily defined by the user to behave as desired, and they can be integrated into other programs by calling Lisp functions in the hammys' definitions.
+
+* Installation
+:PROPERTIES:
+:ID:       f9d7bc00-8bd4-4653-b69e-fdbb1663f5cd
+:END:
+
+Until Hammy reaches a package repository, the easiest way to install it is to use [[https://github.com/quelpa/quelpa-use-package][quelpa-use-package]], like this:
+
+#+BEGIN_SRC elisp
+  (use-package hammy
+    :quelpa (hammy :fetcher github :repo "alphapapa/hammy.el"))
+#+END_SRC
 
 * Usage
 :PROPERTIES:
