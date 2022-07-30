@@ -104,31 +104,55 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
   (hammy-define "Flywheel"
     :documentation "Get your momentum going!"
     :intervals
-    (list (interval :name "Play"
-                    :face 'font-lock-type-face
-                    :duration (duration "5 minutes")
-                    :before (list (announce "Play time!")
-                                  (notify "Play time!"))
-                    :advance (remind "5 minutes"
-                                     (list (announce "Play time is over!")
-                                           (notify "Play time is over!")
-                                           (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav")))))
-          (interval :name "Work"
-                    :face 'font-lock-builtin-face
-                    :duration (climb "5 minutes" "45 minutes"
-                                     :descend t)
-                    :before (list (announce "Work time!")
-                                  (notify "Work time!"))
-                    :advance (remind "10 minutes"
-                                     (list (announce "Work time is over!")
-                                           (notify "Work time is over!")
-                                           (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
-    :after (do (play-sound-file "~/Misc/Sounds/all-done.wav"))
+    (list
+     (interval :name "Play"
+               :face 'font-lock-type-face
+               ;; The play/rest interval will always be 5 minutes long.
+               :duration (duration "5 minutes")
+               ;; Before starting the interval, announce and notify, to
+               ;; show the user that the interval has begun.
+               :before (list (announce "Play time!")
+                             (notify "Play time!"))
+               ;; When the interval's time is up, remind the user every
+               ;; 5 minutes to get back to work.
+               :advance (remind "5 minutes"
+                                (list (announce "Play time is over!")
+                                      (notify "Play time is over!")
+                                      (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav")))))
+     (interval :name "Work"
+               :face 'font-lock-builtin-face
+               ;; For the work interval, rather than the duration being
+               ;; the same each time, it "climbs" from 5 minutes to 45
+               ;; minutes, and then descends back to 5 minutes.  For
+               ;; this, we use the built-in helper function `climb',
+               ;; which returns a lambda function that, when called at
+               ;; "hammy time," returns the appropriate duration each
+               ;; time this interval begins.
+               :duration (climb "5 minutes" "45 minutes"
+                                :descend t)
+               :before (list (announce "Work time!")
+                             (notify "Work time!"))
+               :advance (remind "10 minutes"
+                                (list (announce "Work time is over!")
+                                      (notify "Work time is over!")
+                                      (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
+    ;; This predicate returns non-nil when a full session has been
+    ;; completed (i.e. when the work interval has reached its duration,
+    ;; its duration is 5 minutes, and at least one cycle has been
+    ;; completed, in which case the work interval will have "climbed" to
+    ;; 45 minutes and back down).  Note that the hammy is the argument
+    ;; to the lambda, and slot accessors are used on the hammy and its
+    ;; current interval, offering a kind of introspection at runtime (at
+    ;; "hammy time," i.e. when the timer's code is run between intervals
+    ;; to determine what to do next).
     :complete-p (lambda (hammy)
                   (and (> (hammy-cycles hammy) 1)
                        (hammy-interval hammy)
                        (equal "Work" (hammy-interval-name (hammy-interval hammy)))
-                       (equal (duration "5 minutes") (hammy-current-duration hammy)))))
+                       (equal (duration "5 minutes") (hammy-current-duration hammy))))
+    ;; Then, when the hammy has completed all of its cycles, play this
+    ;; sound to celebrate.
+    :after (do (play-sound-file "~/Misc/Sounds/all-done.wav")))
 #+end_src
 
 Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:duration~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
