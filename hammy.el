@@ -118,7 +118,13 @@ ARGS, these functions are available to be called:
   ;; least, it will be a macro.
   `(cl-macrolet ((do (form)
                      `(lambda (_hammy)
-                        ,form)))
+                        ,form))
+                 (listify (place)
+                          `(unless (listp ,place)
+                             (setf ,place (list ,place)))))
+     ;; NOTE: Some of these functions are called at "hammy time" (I
+     ;; know...), while others return lambdas to be called at hammy
+     ;; time.
      (cl-labels ((announce (message)
                            (lambda (hammy)
                              (hammy-announce hammy message)))
@@ -166,7 +172,30 @@ ARGS, these functions are available to be called:
                                                              (height (1- height)))
                                                            (duration from))
                                                         (duration to)))))))
-                            duration))))
+                            duration)))
+                 (remind (delay fns)
+                         (lambda (hammy)
+                           (listify (hammy-after hammy))
+                           (cl-pushnew #'cancel-reminder (hammy-after hammy))
+                           (dolist (fn fns)
+                             (funcall fn hammy))
+                           (let ((delay-secs (duration delay)))
+                             ;; TODO: Allow the duration to also be a function to return the reminder delay.
+                             (setf (alist-get 'reminder (hammy-etc hammy))
+                                   (run-with-timer delay-secs delay-secs
+                                                   (lambda (hammy)
+                                                     (dolist (fn fns)
+                                                       (funcall fn hammy)))
+                                                   hammy)))
+                           ;; TODO: Might need to cancel and restart
+                           ;; the reminder when a hammy is paused,
+                           ;; too.
+                           (listify (hammy-interval-after (hammy-interval hammy)))
+                           (cl-pushnew #'cancel-reminder (hammy-interval-after (hammy-interval hammy)))))
+                 (cancel-reminder (hammy)
+                                  (when (alist-get 'reminder (hammy-etc hammy))
+                                    (cancel-timer (alist-get 'reminder (hammy-etc hammy)))
+                                    (setf (alist-get 'reminder (hammy-etc hammy)) nil))))
        (let* ((hammy (make-hammy :name ,name ,@args))
               (ring (make-ring (length (hammy-intervals hammy)))))
          (dolist (interval (hammy-intervals hammy))
@@ -565,8 +594,9 @@ overrun time."
                              :face 'font-lock-type-face
                              :before (list (announce "Whew!")
                                            (notify "Whew!"))
-                             :advance (list (announce "Time to stretch your legs!")
-                                            (notify "Time to stretch your legs!")))
+                             :advance (remind "10 minutes"
+                                              (list (announce "Time to stretch your legs!")
+                                                    (notify "Time to stretch your legs!"))))
                    (interval :name "🤸"
                              :length (duration "5 minutes")
                              :face 'font-lock-builtin-face
