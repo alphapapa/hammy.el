@@ -21,7 +21,7 @@ Until Hammy reaches a package repository, the easiest way to install it is to us
 :ID:       fae3cf22-c6d7-4d60-95b7-f3d30941959f
 :END:
 
-First, define a hammy timer.  For example, this one reminds you to stand up every so often:
+First, define a hammy timer (two are included by default, including the one in the following example).  For example, this one reminds you to stand up every so often:
 
 #+begin_src elisp
   (hammy-define "Move"
