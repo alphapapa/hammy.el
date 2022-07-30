@@ -1,0 +1,81 @@
+#+TITLE: Hammy.el notes
+
+* Mascot
+
+** https://commons.wikimedia.org/wiki/File:Hamster_standing_in_exercise_wheel.jpg_in_exercise_wheel.jpg :ATTACH:
+:PROPERTIES:
+:ID:       1fc48051-7b36-4631-bd9a-d3a8b1217914
+:END:
+
+#+NAME: Summary
+| Description | Hamster         |
+| Date        | 22 January 2008 |
+| Source      | Own work        |
+| Author      | Rlicul          |
+
+#+NAME: Licensing
+#+begin_quote
+Permission is granted to copy, distribute and/or modify this document under the terms of the GNU Free Documentation License, Version 1.2 or any later version published by the Free Software Foundation; with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A copy of the license is included in the section entitled GNU Free Documentation License.
+#+end_quote
+
+** https://commons.wikimedia.org/wiki/File:Pearl_Winter_White_Russian_Dwarf_Hamster_-_Front.jpg :ATTACH:
+:PROPERTIES:
+:ID:       003edf0e-d59f-45fe-bb16-9934c7e944f2
+:END:
+
+#+NAME: Summary
+| Description | English: Front of a Pearl Winter White Russian Dwarf Hamster. |
+| Date        | 12 January 2007 (original upload date)                        |
+| Source      | Own work                                                      |
+| Author      | Jpbarrass                                                     |
+
+#+NAME: Licensing
+#+begin_quote
+Permission is granted to copy, distribute and/or modify this document under the terms of the GNU Free Documentation License, Version 1.2 or any later version published by the Free Software Foundation; with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts. A copy of the license is included in the section entitled GNU Free Documentation License. Subject to disclaimers.
+#+end_quote
+
+** https://commons.wikimedia.org/wiki/File:KoreaHamster.jpg          :ATTACH:
+:PROPERTIES:
+:ID:       37a3738f-2ad8-416c-9b0c-e9f440b96bd6
+:END:
+
+** https://pixabay.com/photos/hamster-animal-chair-wood-wall-887661/ :ATTACH:
+:PROPERTIES:
+:ID:       e30448d4-ec54-4c6a-8c50-a11599fe984d
+:END:
+
+It's under the not-quite-free Pixabay License, but it's the most appropriate I've found so far.  Uploaded to Pixabay by "Inactive account – ID 1267434".  For the sake of showing in this readme, it's good enough.
+
+#+begin_quote
+Simplified Pixabay License
+
+Our license empowers creators and protects our community. We want to keep it as simple as possible. Here is an overview of what Pixabay content can and can't be used for.
+
+What is allowed?
+
+✓	All content (e.g. images, videos, music) on Pixabay can be used for free for commercial and noncommercial use across print and digital, except in the cases mentioned in "What is not allowed".
+✓	Attribution is not required. Giving credit to the artist or Pixabay is not necessary but is always appreciated by our community.
+✓	You can make modifications to content from Pixabay.
+
+
+What is not allowed?
+
+This section only applies to media users and not to the appropriate artists.
+
+✕	Don't redistribute or sell Pixabay content on other stock or wallpaper platforms.
+✕	Don't sell unaltered copies of content, e.g. don't sell an exact copy of a stock photo as a poster, print or on a physical product.
+✕	Don't portray identifiable people in a bad light or in a way that is offensive.
+✕	Don't use content with identifiable persons or brands to create a misleading association with a product or service.
+#+end_quote
+
+* Non-sexp syntax
+:PROPERTIES:
+:ID:       452d3bf2-8a6e-44a6-9f6b-5052f20b25fe
+:END:
+
+Could be something like:
+
+#+begin_src elisp
+  "Play=5-15s;Work=5-45s,stop"
+#+end_src
+
