@@ -13,19 +13,51 @@ First, define a hammy timer.  For example, this one reminds you to stand up ever
   (hammy-define "Move"
     :documentation "Don't forget to stretch your legs."
     :intervals
-    (list (interval :name "💺"
-                    :length (duration "45 minutes")
-                    :face 'font-lock-type-face
-                    :before (list (announce "Whew!")
-                                  (notify "Whew!"))
-                    :advance (list (announce "Time to stretch your legs!")
-                                   (notify "Time to stretch your legs!")
-                                   (do (play-sound-file "~/Misc/Sounds/mooove-it.wav"))))
+    ;; A list of intervals, each defined with the `interval' function.
+    (list (interval
+           ;; The name of the interval is a string, used when selecting
+           ;; hammys and shown in the mode line.
+           :name "💺"
+           ;; The duration of the interval in seconds (here,
+           ;; using the `duration' helper function, which
+           ;; converts a string duration to a number of
+           ;; seconds).
+           :duration (duration "45 minutes")
+           ;; Optionally, a face in which to show the
+           ;; interval's name in the mode line.
+           :face 'font-lock-type-face
+           ;; A list of actions to take before starting the interval
+           ;; (here, using two built-in helper functions).
+           :before (list (announce "Whew!")
+                         (notify "Whew!"))
+           ;; We want this interval to not automatically advance to the
+           ;; next one; rather, we want the user to call the
+           ;; `hammy-next' command to indicate when the standing-up is
+           ;; actually happening.  So we provide a list of actions to
+           ;; take when it's time to advance to the next interval, here
+           ;; using three built-in helper functions (including the
+           ;; built-in `do' macro, which wraps any Lisp expression for
+           ;; use in this list), and we wrap the list in a call to the
+           ;; built-in `remind' function, which causes the actions to be
+           ;; repeated every 10 minutes until the user manually advances
+           ;; to the next interval.
+           :advance (remind "10 minutes"
+                            ;; Every 10 minutes, while the hammy is waiting
+                            ;; to be advanced to the next interval, remind
+                            ;; the user by doing these things:
+                            (list (announce "Time to stretch your legs!")
+                                  (notify "Time to stretch your legs!")
+                                  (do (play-sound-file "~/Misc/Sounds/mooove-it.wav")))))
           (interval :name "🤸"
-                    :length (duration "5 minutes")
+                    :duration (duration "5 minutes")
                     :face 'font-lock-builtin-face
                     :before (list (announce "Mooove it!")
                                   (notify "Mooove it!"))
+                    ;; Again, the interval should not advance automatically
+                    ;; to the next--the user should indicate when he's
+                    ;; actually sat down again.  (If we omitted the
+                    ;; `:advance' slot, the interval would automatically
+                    ;; advance when it reached its duration.)
                     :advance (list (announce "Time for a sit-down...")
                                    (notify "Time for a sit-down...")
                                    (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
@@ -60,21 +92,23 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
     :intervals
     (list (interval :name "Play"
                     :face 'font-lock-type-face
-                    :length (duration "5 minutes")
+                    :duration (duration "5 minutes")
                     :before (list (announce "Play time!")
                                   (notify "Play time!"))
-                    :advance (list (announce "Play time is over!")
-                                   (notify "Play time is over!")
-                                   (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav"))))
+                    :advance (remind "5 minutes"
+                                     (list (announce "Play time is over!")
+                                           (notify "Play time is over!")
+                                           (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav")))))
           (interval :name "Work"
                     :face 'font-lock-builtin-face
-                    :length (climb "5 minutes" "45 minutes"
-                                   :descend t)
+                    :duration (climb "5 minutes" "45 minutes"
+                                     :descend t)
                     :before (list (announce "Work time!")
                                   (notify "Work time!"))
-                    :advance (list (announce "Work time is over!")
-                                   (notify "Work time is over!")
-                                   (do (play-sound-file "~/Misc/Sounds/relax.wav")))))
+                    :advance (remind "10 minutes"
+                                     (list (announce "Work time is over!")
+                                           (notify "Work time is over!")
+                                           (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
     :after (do (play-sound-file "~/Misc/Sounds/all-done.wav"))
     :complete-p (lambda (hammy)
                   (and (> (hammy-cycles hammy) 1)
@@ -83,7 +117,7 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                        (equal (duration "5 minutes") (hammy-current-duration hammy)))))
 #+end_src
 
-Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:length~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
+Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:duration~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
 
 * License
 

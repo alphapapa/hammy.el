@@ -78,7 +78,7 @@ is complete, before starting the next interval.")
   (name "" :type 'string)
   (documentation "" :documentation "Documentation.") ; !
   (face nil :documentation "Optional face in which to show the name of the interval.")
-  (length nil :documentation "Number of seconds or function that returns such.
+  (duration nil :documentation "Number of seconds or function that returns such.
 If a function, it is given one argument, the timer it is being
 run in.")
   (before nil :documentation "Function called before interval begins.
@@ -357,10 +357,10 @@ If DURATION, set its first interval to last that many seconds."
                                       (ring-next (hammy-intervals hammy) interval)
                                     (ring-ref (hammy-intervals hammy) 0)))
                    (next-duration (or duration
-                                      (cl-etypecase (hammy-interval-length next-interval)
-                                        (number (hammy-interval-length next-interval))
+                                      (cl-etypecase (hammy-interval-duration next-interval)
+                                        (number (hammy-interval-duration next-interval))
                                         (function (condition-case _err
-                                                      (funcall (hammy-interval-length next-interval) hammy)
+                                                      (funcall (hammy-interval-duration next-interval) hammy)
                                                     (hammy-complete
                                                      (run-hook-with-args 'hammy-complete-hook hammy)
                                                      (message "Hammy is over!  (%s)" (hammy-name hammy))
@@ -566,15 +566,15 @@ overrun time."
   :documentation "Get your momentum going!"
   :intervals (list (interval :name "Rest"
                              :face 'font-lock-type-face
-                             :length (duration "5 minutes")
+                             :duration (duration "5 minutes")
                              :before (list (announce "Rest time!")
                                            (notify "Rest time!"))
                              :advance (list (announce "Rest time is over!")
                                             (notify "Rest time is over!")))
                    (interval :name "Work"
                              :face 'font-lock-builtin-face
-                             :length (climb "5 minutes" "45 minutes"
-                                            :descend t)
+                             :duration (climb "5 minutes" "45 minutes"
+                                              :descend t)
                              :before (list (announce "Work time!")
                                            (notify "Work time!"))
                              :advance (list (announce "Work time is over!")
@@ -590,7 +590,7 @@ overrun time."
 (hammy-define "Move"
   :documentation "Don't forget to stretch your legs!"
   :intervals (list (interval :name "💺"
-                             :length (duration "45 minutes")
+                             :duration (duration "45 minutes")
                              :face 'font-lock-type-face
                              :before (list (announce "Whew!")
                                            (notify "Whew!"))
@@ -598,7 +598,7 @@ overrun time."
                                               (list (announce "Time to stretch your legs!")
                                                     (notify "Time to stretch your legs!"))))
                    (interval :name "🤸"
-                             :length (duration "5 minutes")
+                             :duration (duration "5 minutes")
                              :face 'font-lock-builtin-face
                              :before (list (announce "Move it!")
                                            (notify "Move it!"))
