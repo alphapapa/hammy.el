@@ -116,12 +116,28 @@ ARGS, these functions are available to be called:
   ;; the user would have to quote the argument to prevent evaluation,
   ;; which would likely be confusing to many users.  So, for now, at
   ;; least, it will be a macro.
-  `(cl-macrolet ((do (form)
+  `(cl-macrolet ((cycles ()
+                         `(hammy-cycles hammy))
+                 (do (form)
                      `(lambda (_hammy)
                         ,form))
                  (listify (place)
                           `(unless (listp ,place)
-                             (setf ,place (list ,place)))))
+                             (setf ,place (list ,place))))
+                 (with-hammy (&rest body)
+                             "Return a lambda that binds its sole argument to `hammy'.
+Within BODY, these forms are special:
+
+  `cycles': The number of completed cycles.
+  `current-duration': The duration in seconds of the current interval.
+  `interval': The current interval (a `hammy-interval' struct).
+  `interval-name': The name of the current interval."
+                             `(lambda (hammy)
+                                (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
+                                                     (cycles (hammy-cycles hammy))
+                                                     (interval (hammy-interval hammy))
+                                                     (interval-name (hammy-interval-name interval)))
+                                  ,@body))))
      ;; NOTE: Some of these functions are called at "hammy time" (I
      ;; know...), while others return lambdas to be called at hammy
      ;; time.
@@ -139,6 +155,9 @@ ARGS, these functions are available to be called:
                            (timer-duration interval) )
                  (interval (&rest args)
                            (apply #'make-hammy-interval args))
+                 (elapsed (hammy &optional interval)
+                          "Call `hammy-elapsed', which see."
+                          (hammy-elapsed hammy interval))
                  (num-intervals (hammy)
                                 (ring-length (hammy-intervals hammy)))
                  (history (hammy)
@@ -427,6 +446,21 @@ overrun time."
                 (format " (+%s)" (abs difference))
               ""))))
 
+(defun hammy-elapsed (hammy &optional interval)
+  "Return HAMMY's elapsed time in seconds.
+If INTERVAL (an interval struct or an interval name string),
+return the elapsed time for that interval (summed across all
+cycles)."
+  (pcase-let* (((cl-struct hammy history) hammy)
+               (intervals (cl-typecase interval
+                            (hammy-interval (list interval))
+                            (string (cl-remove-if-not (lambda (element)
+                                                        (equal interval (hammy-interval-name (car element))))
+                                                      history))
+                            (t history))))
+    (cl-loop for (_interval start-time end-time) in intervals
+             sum (float-time (time-subtract end-time start-time)))))
+
 (defun hammy--log-buffer ()
   "Return Hammy log buffer."
   (with-current-buffer (get-buffer-create hammy-log-buffer-name)
@@ -604,6 +638,30 @@ overrun time."
                                            (notify "Move it!"))
                              :advance (list (announce "Time for a sit-down...")
                                             (notify "Time for a sit-down...")))))
+
+(hammy-define (propertize "🍅" 'face '(:foreground "tomato"))
+  :documentation "The classic pomodoro timer."
+  :intervals
+  (list
+   (interval :name "Working"
+             :duration (duration "25 minutes")
+             :before (list (announce "Starting work time.")
+                           (notify "Starting work time."))
+             :advance (list (announce "Break time!")
+                            (notify "Break time!")))
+   (interval :name "Resting"
+             :duration (with-hammy
+                        (if (and (not (zerop cycles))
+                                 (zerop (mod cycles 3)))
+                            ;; If a multiple of three cycles have
+                            ;; elapsed, the fourth work period was
+                            ;; just completed, so take a longer break.
+                            (duration "30 minutes")
+                          (duration "5 minutes")))
+             :before (list (announce "Starting break time.")
+                           (notify "Starting break time."))
+             :advance (list (announce "Break time is over!")
+                            (notify "Break time is over!")))))
 
 ;;;; Footer
 

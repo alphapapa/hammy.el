@@ -21,7 +21,67 @@ Until Hammy reaches a package repository, the easiest way to install it is to us
 :ID:       fae3cf22-c6d7-4d60-95b7-f3d30941959f
 :END:
 
-First, define a hammy timer (two are included by default, including the one in the following example) using the domain-specific language Hammy offers for this purpose.  For example, this one reminds you to stand up every so often (e.g. to prevent RSI):
+First, define a hammy timer (three are included by default, including the three in the following examples) using the domain-specific language Hammy offers for this purpose.
+
+Let's look at a classic example: the "pomodoro timer."  Here's how it's implemented in Hammy:
+
+#+begin_src elisp
+  (hammy-define (propertize "🍅" 'face '(:foreground "tomato"))
+    :documentation "The classic pomodoro timer."
+    :intervals
+    (list
+     (interval :name "Work"
+               :duration (duration "25 minutes")
+               :before (list (announce "Starting work time.")
+                             (notify "Starting work time."))
+               :advance (list (announce "Break time!")
+                              (notify "Break time!")))
+     (interval :name "Break"
+               ;; The `with-hammy' macro returns a lambda within which
+               ;; certain convenience features are available, like
+               ;; binding `hammy' to the hammy struct, and having
+               ;; `cycles' bound to the number of completed cycles.
+               :duration (with-hammy
+                          (if (and (not (zerop cycles))
+                                   (zerop (mod cycles 3)))
+                              ;; If a multiple of three cycles have
+                              ;; elapsed, the fourth work period was
+                              ;; just completed, so take a longer break.
+                              (duration "30 minutes")
+                            (duration "5 minutes")))
+               :before (list (announce "Starting break time.")
+                             (notify "Starting break time."))
+               :advance (list (announce "Break time is over!")
+                              (notify "Break time is over!")))))
+#+end_src
+
+Then you can use these commands, which will prompt you to choose a defined hammy:
+
+| ~hammy-start~  | Start a hammy.                                                                            |
+| ~hammy-next~   | Advance to the next interval of a hammy (when it's defined to not advance automatically). |
+| ~hammy-toggle~ | Pause or unpause a hammy.                                                                 |
+| ~hammy-reset~  | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).  |
+| ~hammy-stop~   | Stop a hammy.                                                                             |
+
+You may also use these commands:
+
+| ~hammy-mode~     | Show the current hammy in the mode-line. |
+| ~hammy-view-log~ | Show the log buffer.                     |
+
+The mode-line looks like this (when no hammy is active, when one is active, and when one is "overdue", waiting for the user to manually advance to the next interval):
+
+[[images/mode-line.png]]
+
+You can see the lighter prefix (~🐹~), the status (~:~, or ~!~ when overdue), the current hammy's name (~Move~), the current interval's name (~💺~), and the time elapsed (prefixed by ~-~ when counting down, and ~+~ when overdue and counting up).
+
+Of course, if you have something against hamsters, the lighter prefix can be customized, as well as various faces for parts of the mode line.  See ~M-x customize-group RET hammy RET~.
+
+** Examples
+:PROPERTIES:
+:ID:       495c83de-90ea-41a9-a491-618758ddbbfa
+:END:
+
+This timer reminds you to stand up every so often (e.g. to prevent RSI):
 
 #+begin_src elisp
   (hammy-define "Move"
@@ -77,27 +137,6 @@ First, define a hammy timer (two are included by default, including the one in t
                                    (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
 #+end_src
 
-Then you can use these commands, which will prompt you to choose a defined hammy:
-
-| ~hammy-start~  | Start a hammy.                                                                            |
-| ~hammy-next~   | Advance to the next interval of a hammy (when it's defined to not advance automatically). |
-| ~hammy-toggle~ | Pause or unpause a hammy.                                                                 |
-| ~hammy-reset~  | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).  |
-| ~hammy-stop~   | Stop a hammy.                                                                             |
-
-You may also use these commands:
-
-| ~hammy-mode~     | Show the current hammy in the mode-line. |
-| ~hammy-view-log~ | Show the log buffer.                     |
-
-The mode-line looks like this (when no hammy is active, when one is active, and when one is "overdue", waiting for the user to manually advance to the next interval):
-
-[[images/mode-line.png]]
-
-You can see the lighter prefix (~🐹~), the status (~:~, or ~!~ when overdue), the current hammy's name (~Move~), the current interval's name (~💺~), and the time elapsed (prefixed by ~-~ when counting down, and ~+~ when overdue and counting up).
-
-Of course, if you have something against hamsters, the lighter prefix can be customized, as well as various faces for parts of the mode line.  See ~M-x customize-group RET hammy RET~.
-
 Here's a more interesting example, a "flywheel timer" (so called because it helps to build momentum), which interleaves rest periods with gradually lengthening work periods.
 
 #+begin_src elisp
@@ -136,20 +175,20 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                                 (list (announce "Work time is over!")
                                       (notify "Work time is over!")
                                       (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
-    ;; This predicate returns non-nil when a full session has been
-    ;; completed (i.e. when the work interval has reached its duration,
-    ;; its duration is 5 minutes, and at least one cycle has been
-    ;; completed, in which case the work interval will have "climbed" to
-    ;; 45 minutes and back down).  Note that the hammy is the argument
-    ;; to the lambda, and slot accessors are used on the hammy and its
-    ;; current interval, offering a kind of introspection at runtime (at
-    ;; "hammy time," i.e. when the timer's code is run between intervals
-    ;; to determine what to do next).
-    :complete-p (lambda (hammy)
-                  (and (> (hammy-cycles hammy) 1)
-                       (hammy-interval hammy)
-                       (equal "Work" (hammy-interval-name (hammy-interval hammy)))
-                       (equal (duration "5 minutes") (hammy-current-duration hammy))))
+    ;; This predicate (using the `with-hammy' macro, which expands to a
+    ;; lambda) returns non-nil when a full session has been completed
+    ;; (i.e. when at least one cycle has been completed, the work interval
+    ;; is active and has reached its duration, and its duration is 5
+    ;; minutes, in which case the work interval will have "climbed" to 45
+    ;; minutes and back down).  Note that the hammy is the implicit
+    ;; argument to the `with-hammy' predicate, and slot accessors
+    ;; (expanded to by a macrolet) are used on the hammy, offering a kind
+    ;; of introspection at runtime (at "hammy time," i.e. when the timer's
+    ;; code is run between intervals to determine what to do next).
+    :complete-p (with-hammy
+                 (and (> cycles 1)
+                      (equal interval-name "Work")
+                      (equal current-duration (duration "5 minutes"))))
     ;; Then, when the hammy has completed all of its cycles, play this
     ;; sound to celebrate.
     :after (do (play-sound-file "~/Misc/Sounds/all-done.wav")))
