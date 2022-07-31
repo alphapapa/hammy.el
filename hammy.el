@@ -420,7 +420,7 @@ If DURATION, set its first interval to last that many seconds."
                           "None")))
          (message (if message (format "  Message:%S" message) "")))
     (format "Hammy (%s): Interval:%s  Cycles:%s%s"
-            (hammy-name hammy) 
+            (hammy-name hammy)
             interval
             (hammy-cycles hammy)
             message)))
@@ -532,7 +532,6 @@ cycles)."
 (define-minor-mode hammy-mode
   "Show active hammy in the mode line."
   :global t
-  :group 'hammy
   (let ((lighter '(hammy-mode (:eval (hammy-mode-lighter)))))
     (if hammy-mode
         (progn
