@@ -94,6 +94,7 @@ until the user calls `hammy-next'."))
 
 ;;;; Macros
 
+;;;###autoload
 (defmacro hammy-define (name &rest args)
   "Define a new Hammy named NAME made with ARGS.
 Returns the hammy, and adds hammy to `hammy-hammys'.  NAME is a
@@ -323,6 +324,7 @@ If paused, resume it.  If running, pause it."
 
 ;;;; Functions
 
+;;;###autoload
 (defun hammy-start (hammy &optional duration)
   "Start HAMMY and return it.
 If DURATION, set its first interval to last that many seconds."
@@ -526,6 +528,7 @@ cycles)."
 (defvar hammy-mode-update-mode-line-timer nil
   "Timer used to update the mode line.")
 
+;;;###autoload
 (define-minor-mode hammy-mode
   "Show active hammy in the mode line."
   :global t
