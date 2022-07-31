@@ -53,7 +53,7 @@
 
 (cl-defstruct hammy
   (name "" :type 'string) (documentation "" :documentation "Documentation.")
-  (elapsed nil :documentation "List of elapsed intervals.
+  (history nil :documentation "List of elapsed intervals.
 Each element is a list of three elements: the interval, the time
 it began, and the time it ended.")
   (cycles 0 :documentation "Number of times the timer has gone through a cycle of all intervals.")
@@ -141,8 +141,8 @@ ARGS, these functions are available to be called:
                            (apply #'make-hammy-interval args))
                  (num-intervals (hammy)
                                 (ring-length (hammy-intervals hammy)))
-                 (elapsed (hammy)
-                          (hammy-elapsed hammy))
+                 (history (hammy)
+                          (hammy-history hammy))
                  (cycles (hammy)
                          (hammy-cycles hammy))
                  (climb (from to &key descend)
@@ -282,7 +282,7 @@ If already running, restarts it."
     (when runningp
       (hammy-stop hammy 'quietly))
     (setf (hammy-cycles hammy) 0
-          (hammy-elapsed hammy) nil
+          (hammy-history hammy) nil
           (hammy-interval hammy) nil
           (hammy-current-interval-start-time hammy) nil
           (hammy-overduep hammy) nil)
@@ -310,7 +310,7 @@ If DURATION, set its first interval to last that many seconds."
   (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
                      current-prefix-arg))
   (unless (and (= 0 (hammy-cycles hammy))
-               (null (hammy-elapsed hammy))
+               (null (hammy-history hammy))
                (null (hammy-interval hammy)))
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
@@ -327,10 +327,10 @@ If DURATION, set its first interval to last that many seconds."
                            (eq 'auto (hammy-interval-advance (hammy-interval hammy))))
                       advance)))
     (unless (and (= 0 (hammy-cycles hammy))
-                 (null (hammy-elapsed hammy))
+                 (null (hammy-history hammy))
                  (null (hammy-interval hammy)))
       ;; Hammy already started, interval completed.
-      (push (list (hammy-interval hammy) (hammy-current-interval-start-time hammy) (current-time)) (hammy-elapsed hammy))
+      (push (list (hammy-interval hammy) (hammy-current-interval-start-time hammy) (current-time)) (hammy-history hammy))
       (run-hook-with-args 'hammy-interval-hook hammy
                           (format "Interval ended: %s"
                                   (hammy-interval-name (hammy-interval hammy))))
