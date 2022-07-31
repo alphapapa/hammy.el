@@ -37,10 +37,6 @@ Let's look at a classic example: the "pomodoro timer."  Here's how it's implemen
                :advance (list (announce "Break time!")
                               (notify "Break time!")))
      (interval :name "Break"
-               ;; The `with-hammy' macro returns a lambda within which
-               ;; certain convenience features are available, like
-               ;; binding `hammy' to the hammy struct, and having
-               ;; `cycles' bound to the number of completed cycles.
                :duration (with-hammy
                           (if (and (not (zerop cycles))
                                    (zerop (mod cycles 3)))
@@ -176,15 +172,17 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                                       (notify "Work time is over!")
                                       (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
     ;; This predicate (using the `with-hammy' macro, which expands to a
-    ;; lambda) returns non-nil when a full session has been completed
-    ;; (i.e. when at least one cycle has been completed, the work interval
-    ;; is active and has reached its duration, and its duration is 5
-    ;; minutes, in which case the work interval will have "climbed" to 45
-    ;; minutes and back down).  Note that the hammy is the implicit
+    ;; lambda, within which certain convenience forms are available)
+    ;; returns non-nil when a full session has been completed (i.e. when
+    ;; at least one cycle has been completed, the work interval is
+    ;; active and has reached its duration, and its duration is 5
+    ;; minutes, in which case the work interval will have "climbed" to
+    ;; 45 minutes and back down).  Note that the hammy is the implicit
     ;; argument to the `with-hammy' predicate, and slot accessors
-    ;; (expanded to by a macrolet) are used on the hammy, offering a kind
-    ;; of introspection at runtime (at "hammy time," i.e. when the timer's
-    ;; code is run between intervals to determine what to do next).
+    ;; (expanded to by a macrolet) are used on the hammy, offering a
+    ;; kind of introspection at runtime (at "hammy time," i.e. when the
+    ;; timer's code is run between intervals to determine what to do
+    ;; next).
     :complete-p (with-hammy
                  (and (> cycles 1)
                       (equal interval-name "Work")
