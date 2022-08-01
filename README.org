@@ -164,7 +164,7 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                ;; "hammy time," returns the appropriate duration each
                ;; time this interval begins.
                :duration (climb "5 minutes" "45 minutes"
-                                :descend t)
+                                :descend t :step "5 minutes")
                :before (list (announce "Work time!")
                              (notify "Work time!"))
                :advance (remind "10 minutes"

@@ -172,33 +172,42 @@ Within BODY, these forms are special:
                           (hammy-history hammy))
                  (cycles (hammy)
                          (hammy-cycles hammy))
-                 (climb (from to &key descend)
+                 (climb (from to &key descend step)
                         ;; FIXME: Make arguments optional.
-                        ;; TODO: Step argument (e.g. increase/decrease by N seconds).
                         (lambda (hammy)
-                          (let* ((apex (/ (duration to)
-                                          (duration from)))
-                                 (duration (if (< (cycles hammy) apex)
-                                               ;; Spin up!
-                                               (min (* (pcase (cycles hammy)
-                                                         (0 1)
-                                                         (cycles (1+ cycles)))
-                                                       (duration from))
-                                                    (duration to))
-                                             ;; Spin down...
-                                             (pcase-exhaustive descend
-                                               (`nil (min (* (pcase (cycles hammy)
-                                                               (0 1)
-                                                               (height (1+ height)))
-                                                             (duration from))
-                                                          (duration to)))
-                                               (`t (hammy-log hammy (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s"
-                                                                            (cycles hammy) apex from to))
-                                                   (min (* (pcase (- (* 2 apex) (cycles hammy))
-                                                             (0 1)
-                                                             (height (1- height)))
-                                                           (duration from))
-                                                        (duration to)))))))
+                          (let* ((from (duration from))
+                                 (to (duration to))
+                                 (apex (/ to from))
+                                 (step (cl-typecase step
+                                         (string (duration step))
+                                         (number step)))
+                                 (duration (cl-labels
+                                               ((ascend
+                                                 () (min (* (pcase (cycles hammy)
+                                                              (0 1)
+                                                              (height (1+ height)))
+                                                            from)
+                                                         to))
+                                                (descend
+                                                 () (min (* (pcase (- (* 2 apex) (cycles hammy))
+                                                              (0 1)
+                                                              (height (1- height)))
+                                                            from)
+                                                         to)))
+                                             (if (< (cycles hammy) apex)
+                                                 ;; Spin up!
+                                                 (if step
+                                                     (+ from (* step (cycles hammy)))
+                                                   (ascend))
+                                               ;; Spin down...
+                                               (pcase-exhaustive descend
+                                                 (`nil (ascend))
+                                                 (`t (hammy-log hammy
+                                                                (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s  Step:%s"
+                                                                        (cycles hammy) apex from to step))
+                                                     (if step
+                                                         (+ from (* step (- (* 2 apex) (cycles hammy))))
+                                                       (descend))))))))
                             duration)))
                  (remind (delay fns)
                          (lambda (hammy)
@@ -621,7 +630,7 @@ cycles)."
                    (interval :name "Work"
                              :face 'font-lock-builtin-face
                              :duration (climb "5 minutes" "45 minutes"
-                                              :descend t)
+                                              :descend t :step "5 minutes")
                              :before (list (announce "Work time!")
                                            (notify "Work time!"))
                              :advance (list (announce "Work time is over!")
