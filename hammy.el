@@ -540,13 +540,13 @@ cycles)."
             (setf hammy-mode-update-mode-line-timer (run-with-timer 1 1 #'hammy--mode-line-update)))
           (add-hook 'hammy-interval-hook #'hammy--mode-line-update)
           ;; Avoid adding the lighter multiple times if the mode is activated again.
-          (cl-pushnew (list lighter) mode-line-misc-info :test #'equal))
+          (cl-pushnew lighter global-mode-string :test #'equal))
       (when hammy-mode-update-mode-line-timer
         (cancel-timer hammy-mode-update-mode-line-timer)
         (setf hammy-mode-update-mode-line-timer nil))
       (remove-hook 'hammy-interval-hook #'hammy--mode-line-update)
-      (setf mode-line-misc-info
-            (delete lighter mode-line-misc-info)))))
+      (setf global-mode-string
+            (remove lighter global-mode-string)))))
 
 (defun hammy-mode-lighter ()
   ;; NOTE: This actually only shows the first active hammy, but it
