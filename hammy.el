@@ -152,6 +152,13 @@ Within BODY, these forms are special:
                  ;;     `(lambda (hammy)
                  ;;        (ignore hammy)
                  ;;        ,form))
+                 (call (command)
+                       ;; This makes it easier to run a shell command without
+                       ;; having to hack around `async-shell-command' to prevent
+                       ;; it from displaying an output buffer, or deal with
+                       ;; `call-process's awkward arguments.
+                       (pcase-let ((`(,command . ,args) (split-string command)))
+                         (apply #'start-process command nil nil nil args)))
                  (duration (interval)
                            (timer-duration interval) )
                  (interval (&rest args)
