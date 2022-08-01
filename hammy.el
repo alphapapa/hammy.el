@@ -559,38 +559,41 @@ cycles)."
   ;; NOTE: This actually only shows the first active hammy, but it
   ;; seems unlikely that users will use more than one
   ;; simultaneously.
-  (let ((hammy (car (cl-remove-if-not #'hammy-timer hammy-hammys))))
-    (if hammy
-        (let ((remaining (abs
-                          ;; We use the absolute value because
-                          ;; `ts-human-format-duration' returns 0 for
-                          ;; negative numbers.
-                          (- (hammy-current-duration hammy)
-                             (float-time (time-subtract (current-time)
-                                                        (hammy-current-interval-start-time hammy)))))))
-          (format "%s%s%s(%s:%s) "
-                  (propertize hammy-mode-lighter-prefix
+  (cl-labels ((format-hammy
+               (hammy) (let ((remaining (abs
+                                         ;; We use the absolute value because
+                                         ;; `ts-human-format-duration' returns 0 for
+                                         ;; negative numbers.
+                                         (- (hammy-current-duration hammy)
+                                            (float-time (time-subtract (current-time)
+                                                                       (hammy-current-interval-start-time hammy)))))))
+                         (format "%s%s(%s:%s)"
+                                 (if (hammy-overduep hammy)
+                                     (propertize hammy-mode-lighter-overdue
+                                                 'face 'hammy-mode-lighter-overdue)
+                                   "")
+                                 (hammy-name hammy)
+                                 (propertize (hammy-interval-name (hammy-interval hammy))
+                                             'face (hammy-interval-face (hammy-interval hammy)))
+                                 (concat (if (hammy-overduep hammy)
+                                             ;; We use the negative sign when
+                                             ;; counting down to the end of an
+                                             ;; interval (i.e. "T-minus...") .
+                                             "+" "-")
+                                         (ts-human-format-duration remaining 'abbr))))))
+    (let ((hammys (cl-remove-if-not #'hammy-timer hammy-hammys)))
+      (if hammys
+          (concat (propertize hammy-mode-lighter-prefix
                               'face 'hammy-mode-lighter-prefix-active)
-                  (if (hammy-overduep hammy)
-                      (propertize hammy-mode-lighter-overdue
-                                  'face 'hammy-mode-lighter-overdue)
-                    ":")
-                  (hammy-name hammy)
-                  (propertize (hammy-interval-name (hammy-interval hammy))
-                              'face (hammy-interval-face (hammy-interval hammy)))
-                  (concat (if (hammy-overduep hammy)
-                              ;; We use the negative sign when
-                              ;; counting down to the end of an
-                              ;; interval (i.e. "T-minus...") .
-                              "+" "-")
-                          (ts-human-format-duration remaining 'abbr))))
-      ;; No active hammys.
-      (when hammy-mode-always-show-lighter
-        (concat (propertize hammy-mode-lighter-prefix
-                            'face 'hammy-mode-lighter-prefix-inactive)
-                (if hammy-mode-lighter-suffix-inactive
-                    (concat ":" hammy-mode-lighter-suffix-inactive))
-                " ")))))
+                  ":"
+                  (mapconcat #'format-hammy hammys ",") " ")
+        ;; No active hammys.
+        (when hammy-mode-always-show-lighter
+          (concat (propertize hammy-mode-lighter-prefix
+                              'face 'hammy-mode-lighter-prefix-inactive)
+                  (if hammy-mode-lighter-suffix-inactive
+                      (concat ":" hammy-mode-lighter-suffix-inactive))
+                  " "))))))
 
 ;;;; Notifications
 
