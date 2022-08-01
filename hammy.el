@@ -451,8 +451,9 @@ overrun time."
                       (time-subtract (hammy-current-duration hammy) elapsed-secs))))
     (format "%s%s"
             (ts-human-format-duration elapsed-secs 'abbr)
-            (if (< difference 0)
-                (format " (+%s)" (abs difference))
+            (if (not (zerop difference))
+                (let ((sign (if (< 0 difference) "-" "+")))
+                  (format " (%s%s)" sign (ts-human-format-duration (abs difference) 'abbr)))
               ""))))
 
 (defun hammy-elapsed (hammy &optional interval)
