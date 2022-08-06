@@ -462,11 +462,20 @@ unsatisfied ADVANCE predicate."
 
 (defun hammy-log (hammy &optional message)
   "Log MESSAGE for HAMMY to log buffer."
-  (let ((inhibit-read-only t))
-    (with-current-buffer (hammy--log-buffer)
+  (with-current-buffer (hammy-log-buffer)
+    (let* ((inhibit-read-only t)
+           (buffer-window (get-buffer-window (current-buffer)))
+           (point-at-eob-p (equal (point-max)
+                                  (if buffer-window
+                                      (window-point buffer-window)
+                                    (point)))))
       (save-excursion
         (goto-char (point-max))
-        (insert (format-time-string "%Y-%m-%d %H:%M:%S  ") (hammy-format hammy message) "\n")))))
+        (insert (format-time-string "%Y-%m-%d %H:%M:%S  ") (hammy-format hammy message) "\n"))
+      (when point-at-eob-p
+        (if buffer-window
+            (setf (window-point buffer-window) (point-max))
+          (setf (point) (point-max)))))))
 
 (defun hammy-format-current-times (hammy)
   "Return current times for HAMMY formatted.
@@ -499,7 +508,7 @@ cycles)."
     (cl-loop for (_interval start-time end-time) in intervals
              sum (float-time (time-subtract end-time start-time)))))
 
-(defun hammy--log-buffer ()
+(defun hammy-log-buffer ()
   "Return Hammy log buffer."
   (with-current-buffer (get-buffer-create hammy-log-buffer-name)
     (read-only-mode)
@@ -508,7 +517,7 @@ cycles)."
 (defun hammy-view-log ()
   "Show Hammy log buffer."
   (interactive)
-  (pop-to-buffer (hammy--log-buffer)))
+  (pop-to-buffer (hammy-log-buffer)))
 
 (defun hammy-complete (prompt hammys)
   "Return one of HAMMYS selected with completion and PROMPT."
