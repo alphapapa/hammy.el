@@ -245,6 +245,9 @@ ARGS, these pseudo-functions and forms available:
          hammy))))
 
 (defmacro hammy-run-place (place &rest args)
+  "Call PLACE with ARGS.
+If PLACE is a function, call it; if a list of functions, call
+each of them; if nil, do nothing."
   `(cl-typecase ,place
      (function (funcall ,place ,@args))
      (null nil)
@@ -365,7 +368,11 @@ If DURATION, set its first interval to last that many seconds."
   hammy)
 
 (cl-defun hammy-next (hammy &optional duration &key advance)
-  "Advance to HAMMY's next interval."
+  "Advance to HAMMY's next interval.
+If DURATION (interactivel, with numeric prefix), set the
+interval's duration to DURATION seconds.  If ADVANCE, advance to
+the next interval even if the previous interval has an
+unsatisfied ADVANCE predicate."
   (interactive (list (hammy-complete "Advance hammy: " hammy-active) nil :advance t))
   (when (hammy-timer hammy)
     ;; Cancel any outstanding timer.
@@ -504,7 +511,7 @@ cycles)."
   (pop-to-buffer (hammy--log-buffer)))
 
 (defun hammy-complete (prompt hammys)
-  "Return one of HAMMYS selected with completion."
+  "Return one of HAMMYS selected with completion and PROMPT."
   (cl-labels ((describe (hammy)
                         (format "%s (%s)"
                                 (hammy-name hammy)
@@ -517,6 +524,7 @@ cycles)."
            (alist-get description map nil nil #'equal))))))
 
 (defun hammy-announce (hammy message)
+  "Announce MESSAGE in the echo area for HAMMY."
   (message "Hammy (%s): %s"
            (hammy-name hammy) message))
 
@@ -578,9 +586,7 @@ cycles)."
             (remove lighter global-mode-string)))))
 
 (defun hammy-mode-lighter ()
-  ;; NOTE: This actually only shows the first active hammy, but it
-  ;; seems unlikely that users will use more than one
-  ;; simultaneously.
+  "Return the mode-line lighter for `hammy-mode'."
   (cl-labels ((format-hammy
                (hammy) (let ((remaining (abs
                                          ;; We use the absolute value because
@@ -625,6 +631,7 @@ cycles)."
 (require 'notifications)
 
 (defun hammy-notify (hammy &optional message)
+  "Call `notifications-notify' for HAMMY with MESSAGE."
   (notifications-notify :title (format "Hammy (%s)"
                                        (hammy-name hammy))
                         :body (or message (hammy-format hammy))))
