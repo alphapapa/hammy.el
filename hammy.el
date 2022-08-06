@@ -1,4 +1,4 @@
-;;; hammy.el --- Programmable, interactive interval timers (e.g. for working and resting)  -*- lexical-binding: t; -*-
+;;; hammy.el --- Programmable, interactive interval timers  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2022  Adam Porter
 
