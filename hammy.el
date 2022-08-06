@@ -530,11 +530,6 @@ cycles)."
 
 ;;;; Mode
 
-(defun hammy--mode-line-update (&rest _ignore)
-  "Force updating of all mode lines when a hammy is active."
-  (when hammy-active
-    (force-mode-line-update 'all)))
-
 (defcustom hammy-mode-always-show-lighter t
   "Show lighter even when no hammys are running."
   :type 'boolean)
@@ -551,16 +546,18 @@ cycles)."
   "Shown when no hammys are running."
   :type 'string)
 
+(defcustom hammy-mode-update-mode-line-continuously t
+  "Update the mode line every second while a hammy is running."
+  :type 'boolean)
+
 (defface hammy-mode-lighter-prefix-inactive '((t (:inherit warning)))
   "Used when no hammy is active.")
 
 (defface hammy-mode-lighter-prefix-active '((t (:inherit font-lock-type-face)))
   "Used when no hammy is active.")
+
 (defface hammy-mode-lighter-overdue '((t (:inherit error)))
   "Used when no hammy is active.")
-(defcustom hammy-mode-update-mode-line-continuously t
-  "Update the mode line every second while a hammy is running."
-  :type 'boolean)
 
 (defvar hammy-mode-update-mode-line-timer nil
   "Timer used to update the mode line.")
@@ -625,6 +622,11 @@ cycles)."
                   (if hammy-mode-lighter-suffix-inactive
                       (concat ":" hammy-mode-lighter-suffix-inactive))
                   " "))))))
+
+(defun hammy--mode-line-update (&rest _ignore)
+  "Force updating of all mode lines when a hammy is active."
+  (when hammy-active
+    (force-mode-line-update 'all)))
 
 ;;;; Notifications
 
