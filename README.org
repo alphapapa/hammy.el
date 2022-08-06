@@ -36,11 +36,13 @@ Until Hammy reaches a package repository, the easiest way to install it is to us
 :ID:       fae3cf22-c6d7-4d60-95b7-f3d30941959f
 :END:
 
-First, define a hammy timer (three are included by default, including the three in the following examples) using the domain-specific language Hammy offers for this purpose.
+First, define a hammy timer using the domain-specific language Hammy offers for this purpose.  (The ones in the following examples are defined by default, so you can use them upon installation of the package.)
 
-Let's look at a classic example: the "pomodoro timer."  Here's how it's implemented in Hammy:
+Let's look at a classic example, the "pomodoro timer."  Here's how it's implemented in Hammy:
 
 #+begin_src elisp
+  ;; We name the timer with the Unicode TOMATO character, and propertize
+  ;; it with a tomato-colored face.
   (hammy-define (propertize "🍅" 'face '(:foreground "tomato"))
     :documentation "The classic pomodoro timer."
     :intervals
@@ -90,6 +92,8 @@ Of course, if you have something against hamsters, the lighter prefix can be cus
 :PROPERTIES:
 :ID:       495c83de-90ea-41a9-a491-618758ddbbfa
 :END:
+
+These examples have more detailed comments to explain how a hammy is defined.
 
 This timer reminds you to stand up every so often (e.g. to prevent RSI):
 
@@ -172,11 +176,11 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                :face 'font-lock-builtin-face
                ;; For the work interval, rather than the duration being
                ;; the same each time, it "climbs" from 5 minutes to 45
-               ;; minutes, and then descends back to 5 minutes.  For
-               ;; this, we use the built-in helper function `climb',
-               ;; which returns a lambda function that, when called at
-               ;; "hammy time," returns the appropriate duration each
-               ;; time this interval begins.
+               ;; minutes in 5-minute steps, and then descends back to 5
+               ;; minutes.  For this, we use the built-in helper
+               ;; function `climb', which returns a lambda function
+               ;; that, when called at "hammy time," returns the
+               ;; appropriate duration each time this interval begins.
                :duration (climb "5 minutes" "45 minutes"
                                 :descend t :step "5 minutes")
                :before (do (announce "Work time!")
@@ -185,18 +189,18 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                                 (do (announce "Work time is over!")
                                     (notify "Work time is over!")
                                     (play-sound-file "~/Misc/Sounds/relax.wav")))))
-    ;; This predicate (using the `with-hammy' macro, which expands to a
-    ;; lambda, within which certain convenience forms are available)
-    ;; returns non-nil when a full session has been completed (i.e. when
-    ;; at least one cycle has been completed, the work interval is
-    ;; active and has reached its duration, and its duration is 5
-    ;; minutes, in which case the work interval will have "climbed" to
-    ;; 45 minutes and back down).  Note that the hammy is the implicit
-    ;; argument to the `with-hammy' predicate, and slot accessors
-    ;; (expanded to by a macrolet) are used on the hammy, offering a
-    ;; kind of introspection at runtime (at "hammy time," i.e. when the
-    ;; timer's code is run between intervals to determine what to do
-    ;; next).
+    ;; The `complete-p' predicate returns non-nil when a full session
+    ;; has been completed (i.e. when at least one cycle has been
+    ;; completed, the work interval is active and has reached its
+    ;; duration, and its duration is 5 minutes, in which case the work
+    ;; interval will have "climbed" to 45 minutes and back down).
+
+    ;; Note that the `do' macro expands to a lambda within the body of
+    ;; which certain special forms are bound, including `hammy',
+    ;; `cycles', `interval-name', and `current-duration', allowing
+    ;; introspection at runtime.  The predicate is called at "hammy
+    ;; time", i.e. when the timer's code is run between intervals to
+    ;; determine what to do next.
     :complete-p (do (and (> cycles 1)
                          (equal interval-name "Work")
                          (equal current-duration (duration "5 minutes"))))
