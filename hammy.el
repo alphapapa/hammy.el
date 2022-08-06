@@ -34,8 +34,9 @@
 
 ;; Q: Why are timers called hammys?  Isn't that silly?
 
-;; A: Probably.  But it also helps to distinguish them from Emacs's
-;; timers, which are used in the implementation.  And besides, 🐹!
+;; A: Probably, but is it sillier than calling them tomatoes?
+;; Besides, it helps to distinguish them from Emacs's timers, which
+;; are used in the implementation.
 
 ;;; Code:
 
@@ -99,9 +100,19 @@ until the user calls `hammy-next'."))
   "Define a new Hammy named NAME made with ARGS.
 Returns the hammy, and adds hammy to `hammy-hammys'.  NAME is a
 string.  ARGS are passed to `make-hammy', which see.  Within
-ARGS, these functions are available to be called:
+ARGS, these pseudo-functions and forms available:
 
-  `announce':"
+  `announce (message)': Announce MESSAGE in the echo area.
+  `notify (message)`: Send MESSAGE as a desktop notification.
+
+  `do (&rest body)': Expands to a lambda that binds `hammy' to
+    the current hammy and evaluates BODY.  Within its BODY, these
+    forms are bound:
+
+    `cycles': The number of cycles the hammy has completed.
+    `current-duration': The duration in seconds of the current interval.
+    `interval': The current interval (a `hammy-interval' struct).
+    `interval-name': The name of the current interval."
   (declare (indent defun))
   ;; FIXME: Docstring.
   
@@ -110,6 +121,12 @@ ARGS, these functions are available to be called:
   ;; the structure changes, so we just expand to the code that makes
   ;; the struct.
 
+  ;; NOTE: This macro essentially expands to a call to `make-hammy'
+  ;; with the given arguments, wrapping some of them in macrolet,
+  ;; symbol-macrolet, and labels forms, and lambdas.  This way, we get
+  ;; some checking for free at macro expansion time and compilation
+  ;; time, rather than those errors happening at runtime.
+
   ;; NOTE: If a user byte-compiles a config file containing a
   ;; `hammy-define' call, and the definition of this macro changes in
   ;; a later version, it will be a problem.  So it would be nice if
@@ -117,48 +134,34 @@ ARGS, these functions are available to be called:
   ;; the user would have to quote the argument to prevent evaluation,
   ;; which would likely be confusing to many users.  So, for now, at
   ;; least, it will be a macro.
-  `(cl-macrolet ((cycles ()
+  `(cl-macrolet ((announce (message)
+                           `(hammy-announce hammy ,message))
+                 (notify (message)
+                         `(hammy-notify hammy ,message))
+                 (cycles ()
                          `(hammy-cycles hammy))
-                 (do (form)
-                     `(lambda (_hammy)
-                        ,form))
                  (listify (place)
                           `(unless (listp ,place)
                              (setf ,place (list ,place))))
-                 (with-hammy (&rest body)
-                             "Return a lambda that binds its sole argument to `hammy'.
-Within BODY, these forms are special:
-
-  `cycles': The number of completed cycles.
-  `current-duration': The duration in seconds of the current interval.
-  `interval': The current interval (a `hammy-interval' struct).
-  `interval-name': The name of the current interval."
-                             `(lambda (hammy)
-                                (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
-                                                     (cycles (hammy-cycles hammy))
-                                                     (interval (hammy-interval hammy))
-                                                     (interval-name (hammy-interval-name interval)))
-                                  ,@body))))
+                 (do (&rest body)
+                     `(lambda (hammy)
+                        (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
+                                             (cycles (hammy-cycles hammy))
+                                             (interval (hammy-interval hammy))
+                                             (interval-name (hammy-interval-name interval)))
+                          (ignore hammy)
+                          ,@body))))
      ;; NOTE: Some of these functions are called at "hammy time" (I
      ;; know...), while others return lambdas to be called at hammy
      ;; time.
-     (cl-labels ((announce (message)
-                           (lambda (hammy)
-                             (hammy-announce hammy message)))
-                 (notify (message)
-                         (lambda (hammy)
-                           (hammy-notify hammy message)))
-                 ;; (do (form)
-                 ;;     `(lambda (hammy)
-                 ;;        (ignore hammy)
-                 ;;        ,form))
-                 (call (command)
-                       ;; This makes it easier to run a shell command without
-                       ;; having to hack around `async-shell-command' to prevent
-                       ;; it from displaying an output buffer, or deal with
-                       ;; `call-process's awkward arguments.
-                       (pcase-let ((`(,command . ,args) (split-string command)))
-                         (apply #'start-process command nil nil nil args)))
+     (cl-labels ((run (command)
+                      ;; This makes it easier to run a shell command without
+                      ;; having to hack around `async-shell-command' to prevent
+                      ;; it from displaying an output buffer, or deal with
+                      ;; `call-process's awkward arguments.
+                      (let* ((command (split-string command))
+                             (name (format "hammy: Calling process %S" (car command))))
+                        (make-process :name name :command command :noquery t)))
                  (duration (interval)
                            (timer-duration interval) )
                  (interval (&rest args)
@@ -209,7 +212,7 @@ Within BODY, these forms are special:
                                                          (+ from (* step (- (* 2 apex) (cycles hammy))))
                                                        (descend))))))))
                             duration)))
-                 (remind (delay fns)
+                 (remind (delay &rest fns)
                          (lambda (hammy)
                            (listify (hammy-after hammy))
                            (cl-pushnew #'cancel-reminder (hammy-after hammy))
@@ -297,7 +300,9 @@ If QUIETLY, don't say so."
   (interactive
    (list (or (hammy-complete "Stop hammy: " hammy-active)
              (user-error "No active hammys"))))
-  (pcase-let* (((cl-struct hammy (timer internal-timer)) hammy)
+  (pcase-let* (((cl-struct hammy (timer internal-timer)
+                           (etc (map reminder)))
+                hammy)
                ;; TODO: Logging, totals, etc.
                (message "Stopped."))
     (setf hammy-active (remove hammy hammy-active))
@@ -307,6 +312,9 @@ If QUIETLY, don't say so."
       (hammy-log hammy message)
       (unless quietly
         (message message)))
+    (when reminder
+      (cancel-timer reminder)
+      (setf (alist-get 'reminder (hammy-etc hammy)) nil))
     (hammy-reset hammy)
     hammy))
 
@@ -359,6 +367,10 @@ If DURATION, set its first interval to last that many seconds."
 (cl-defun hammy-next (hammy &optional duration &key advance)
   "Advance to HAMMY's next interval."
   (interactive (list (hammy-complete "Advance hammy: " hammy-active) nil :advance t))
+  (when (hammy-timer hammy)
+    ;; Cancel any outstanding timer.
+    (cancel-timer (hammy-timer hammy))
+    (setf (hammy-timer hammy) nil))
   (cl-labels ((advancep
                () (or (and (hammy-interval hammy)
                            (eq 'auto (hammy-interval-advance (hammy-interval hammy))))
@@ -591,7 +603,10 @@ cycles)."
                                              ;; interval (i.e. "T-minus...") .
                                              "+" "-")
                                          (ts-human-format-duration remaining 'abbr))))))
-    (let ((hammys (cl-remove-if-not #'hammy-timer hammy-hammys)))
+    (let ((hammys (cl-remove-if-not (lambda (hammy)
+                                      (or (hammy-timer hammy)
+                                          (alist-get 'reminder (hammy-etc hammy))))
+                                    hammy-hammys)))
       (if hammys
           (concat (propertize hammy-mode-lighter-prefix
                               'face 'hammy-mode-lighter-prefix-active)
@@ -623,43 +638,42 @@ cycles)."
   :intervals (list (interval :name "Rest"
                              :face 'font-lock-type-face
                              :duration (duration "5 minutes")
-                             :before (list (announce "Rest time!")
-                                           (notify "Rest time!"))
-                             :advance (list (announce "Rest time is over!")
-                                            (notify "Rest time is over!")))
+                             :before (do (announce "Rest time!")
+                                         (notify "Rest time!"))
+                             :advance (do (announce "Rest time is over!")
+                                          (notify "Rest time is over!")))
                    (interval :name "Work"
                              :face 'font-lock-builtin-face
                              :duration (climb "5 minutes" "45 minutes"
                                               :descend t :step "5 minutes")
-                             :before (list (announce "Work time!")
-                                           (notify "Work time!"))
-                             :advance (list (announce "Work time is over!")
-                                            (notify "Work time is over!"))))
-  :after (list (announce "Flywheel session complete!")
-               (notify "Flywheel session complete!"))
-  :complete-p (lambda (hammy)
-                (and (> (hammy-cycles hammy) 1)
-                     (hammy-interval hammy)
-                     (equal "Work" (hammy-interval-name (hammy-interval hammy)))
-                     (equal (duration "5 minutes") (hammy-current-duration hammy)))))
+                             :before (do (announce "Work time!")
+                                         (notify "Work time!"))
+                             :advance (do (announce "Work time is over!")
+                                          (notify "Work time is over!"))))
+  :after (do (announce "Flywheel session complete!")
+             (notify "Flywheel session complete!"))
+  :complete-p (do (and (> cycles 1)
+                       interval
+                       (equal "Work" interval-name)
+                       (equal (duration "5 minutes") current-duration))))
 
 (hammy-define "Move"
   :documentation "Don't forget to stretch your legs!"
   :intervals (list (interval :name "💺"
                              :duration (duration "45 minutes")
                              :face 'font-lock-type-face
-                             :before (list (announce "Whew!")
-                                           (notify "Whew!"))
+                             :before (do (announce "Whew!")
+                                         (notify "Whew!"))
                              :advance (remind "10 minutes"
-                                              (list (announce "Time to stretch your legs!")
-                                                    (notify "Time to stretch your legs!"))))
+                                              (do (announce "Time to stretch your legs!")
+                                                  (notify "Time to stretch your legs!"))))
                    (interval :name "🤸"
                              :duration (duration "5 minutes")
                              :face 'font-lock-builtin-face
-                             :before (list (announce "Move it!")
-                                           (notify "Move it!"))
-                             :advance (list (announce "Time for a sit-down...")
-                                            (notify "Time for a sit-down...")))))
+                             :before (do (announce "Move it!")
+                                         (notify "Move it!"))
+                             :advance (do (announce "Time for a sit-down...")
+                                          (notify "Time for a sit-down...")))))
 
 (hammy-define (propertize "🍅" 'face '(:foreground "tomato"))
   :documentation "The classic pomodoro timer."
@@ -667,23 +681,22 @@ cycles)."
   (list
    (interval :name "Working"
              :duration (duration "25 minutes")
-             :before (list (announce "Starting work time.")
-                           (notify "Starting work time."))
-             :advance (list (announce "Break time!")
-                            (notify "Break time!")))
+             :before (do (announce "Starting work time.")
+                         (notify "Starting work time."))
+             :advance (do (announce "Break time!")
+                          (notify "Break time!")))
    (interval :name "Resting"
-             :duration (with-hammy
-                        (if (and (not (zerop cycles))
-                                 (zerop (mod cycles 3)))
-                            ;; If a multiple of three cycles have
-                            ;; elapsed, the fourth work period was
-                            ;; just completed, so take a longer break.
-                            (duration "30 minutes")
-                          (duration "5 minutes")))
-             :before (list (announce "Starting break time.")
-                           (notify "Starting break time."))
-             :advance (list (announce "Break time is over!")
-                            (notify "Break time is over!")))))
+             :duration (do (if (and (not (zerop cycles))
+                                    (zerop (mod cycles 3)))
+                               ;; If a multiple of three cycles have
+                               ;; elapsed, the fourth work period was
+                               ;; just completed, so take a longer break.
+                               (duration "30 minutes")
+                             (duration "5 minutes")))
+             :before (do (announce "Starting break time.")
+                         (notify "Starting break time."))
+             :advance (do (announce "Break time is over!")
+                          (notify "Break time is over!")))))
 
 ;;;; Footer
 

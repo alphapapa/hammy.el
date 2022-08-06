@@ -1,8 +1,23 @@
+:PROPERTIES:
+:TOC:      :include all :force (nothing) :ignore (nothing) :local (nothing)
+:END:
 #+TITLE: Hammy.el
 
 #+HTML: <img src="images/mascot.png" align="right">
 
 Hammy provides programmable, interactive interval timers for Emacs.  They can be used, e.g. to alternate between working and resting periods, to remind yourself to stretch your legs, etc.  Timers, known as "hammys", are easily defined by the user to behave as desired, and they can be integrated into other programs by calling Lisp functions in the hammys' definitions.
+
+* Contents
+:PROPERTIES:
+:TOC:      :include all :ignore this
+:END:
+:CONTENTS:
+- [[#installation][Installation]]
+- [[#usage][Usage]]
+  - [[#examples][Examples]]
+  - [[#tips][Tips]]
+- [[#faq][FAQ]]
+:END:
 
 * Installation
 :PROPERTIES:
@@ -32,23 +47,22 @@ Let's look at a classic example: the "pomodoro timer."  Here's how it's implemen
     (list
      (interval :name "Work"
                :duration (duration "25 minutes")
-               :before (list (announce "Starting work time.")
-                             (notify "Starting work time."))
-               :advance (list (announce "Break time!")
-                              (notify "Break time!")))
+               :before (do (announce "Starting work time.")
+                           (notify "Starting work time."))
+               :advance (do (announce "Break time!")
+                            (notify "Break time!")))
      (interval :name "Break"
-               :duration (with-hammy
-                          (if (and (not (zerop cycles))
-                                   (zerop (mod cycles 3)))
-                              ;; If a multiple of three cycles have
-                              ;; elapsed, the fourth work period was
-                              ;; just completed, so take a longer break.
-                              (duration "30 minutes")
-                            (duration "5 minutes")))
-               :before (list (announce "Starting break time.")
-                             (notify "Starting break time."))
-               :advance (list (announce "Break time is over!")
-                              (notify "Break time is over!")))))
+               :duration (do (if (and (not (zerop cycles))
+                                      (zerop (mod cycles 3)))
+                                 ;; If a multiple of three cycles have
+                                 ;; elapsed, the fourth work period was
+                                 ;; just completed, so take a longer break.
+                                 (duration "30 minutes")
+                               (duration "5 minutes")))
+               :before (do (announce "Starting break time.")
+                           (notify "Starting break time."))
+               :advance (do (announce "Break time is over!")
+                            (notify "Break time is over!")))))
 #+end_src
 
 Then you can use these commands, which will prompt you to choose a defined hammy:
@@ -97,40 +111,40 @@ This timer reminds you to stand up every so often (e.g. to prevent RSI):
            ;; interval's name in the mode line.
            :face 'font-lock-type-face
            ;; A list of actions to take before starting the interval
-           ;; (here, using two built-in helper functions).
-           :before (list (announce "Whew!")
-                         (notify "Whew!"))
+           ;; (really, one or a list of functions to call with the hammy
+           ;; as the argument).  The `do' macro expands to a lambda,
+           ;; which the interval's `before' slot is set to.  In its
+           ;; body, we call two built-in helper functions.
+           :before (do (announce "Whew!")
+                       (notify "Whew!"))
            ;; We want this interval to not automatically advance to the
            ;; next one; rather, we want the user to call the
            ;; `hammy-next' command to indicate when the standing-up is
            ;; actually happening.  So we provide a list of actions to
-           ;; take when it's time to advance to the next interval, here
-           ;; using three built-in helper functions (including the
-           ;; built-in `do' macro, which wraps any Lisp expression for
-           ;; use in this list), and we wrap the list in a call to the
-           ;; built-in `remind' function, which causes the actions to be
-           ;; repeated every 10 minutes until the user manually advances
-           ;; to the next interval.
+           ;; take when it's time to advance to the next interval.  We
+           ;; wrap the list in a call to the built-in `remind' function,
+           ;; which causes the actions to be repeated every 10 minutes
+           ;; until the user manually advances to the next interval.
            :advance (remind "10 minutes"
                             ;; Every 10 minutes, while the hammy is waiting
                             ;; to be advanced to the next interval, remind
                             ;; the user by doing these things:
-                            (list (announce "Time to stretch your legs!")
-                                  (notify "Time to stretch your legs!")
-                                  (do (play-sound-file "~/Misc/Sounds/mooove-it.wav")))))
+                            (do (announce "Time to stretch your legs!")
+                                (notify "Time to stretch your legs!")
+                                (play-sound-file "~/Misc/Sounds/mooove-it.wav"))))
           (interval :name "🤸"
                     :duration (duration "5 minutes")
                     :face 'font-lock-builtin-face
-                    :before (list (announce "Mooove it!")
-                                  (notify "Mooove it!"))
+                    :before (do (announce "Mooove it!")
+                                (notify "Mooove it!"))
                     ;; Again, the interval should not advance automatically
                     ;; to the next--the user should indicate when he's
                     ;; actually sat down again.  (If we omitted the
                     ;; `:advance' slot, the interval would automatically
                     ;; advance when it reached its duration.)
-                    :advance (list (announce "Time for a sit-down...")
-                                   (notify "Time for a sit-down...")
-                                   (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
+                    :advance (do (announce "Time for a sit-down...")
+                                 (notify "Time for a sit-down...")
+                                 (play-sound-file "~/Misc/Sounds/relax.wav")))))
 #+end_src
 
 Here's a more interesting example, a "flywheel timer" (so called because it helps to build momentum), which interleaves rest periods with gradually lengthening work periods.
@@ -146,14 +160,14 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                :duration (duration "5 minutes")
                ;; Before starting the interval, announce and notify, to
                ;; show the user that the interval has begun.
-               :before (list (announce "Play time!")
-                             (notify "Play time!"))
+               :before (do (announce "Play time!")
+                           (notify "Play time!"))
                ;; When the interval's time is up, remind the user every
                ;; 5 minutes to get back to work.
                :advance (remind "5 minutes"
-                                (list (announce "Play time is over!")
-                                      (notify "Play time is over!")
-                                      (do (play-sound-file "~/Misc/Sounds/get-to-workin.wav")))))
+                                (do (announce "Play time is over!")
+                                    (notify "Play time is over!")
+                                    (play-sound-file "~/Misc/Sounds/get-to-workin.wav"))))
      (interval :name "Work"
                :face 'font-lock-builtin-face
                ;; For the work interval, rather than the duration being
@@ -165,12 +179,12 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
                ;; time this interval begins.
                :duration (climb "5 minutes" "45 minutes"
                                 :descend t :step "5 minutes")
-               :before (list (announce "Work time!")
-                             (notify "Work time!"))
+               :before (do (announce "Work time!")
+                           (notify "Work time!"))
                :advance (remind "10 minutes"
-                                (list (announce "Work time is over!")
-                                      (notify "Work time is over!")
-                                      (do (play-sound-file "~/Misc/Sounds/relax.wav"))))))
+                                (do (announce "Work time is over!")
+                                    (notify "Work time is over!")
+                                    (play-sound-file "~/Misc/Sounds/relax.wav")))))
     ;; This predicate (using the `with-hammy' macro, which expands to a
     ;; lambda, within which certain convenience forms are available)
     ;; returns non-nil when a full session has been completed (i.e. when
@@ -183,10 +197,9 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
     ;; kind of introspection at runtime (at "hammy time," i.e. when the
     ;; timer's code is run between intervals to determine what to do
     ;; next).
-    :complete-p (with-hammy
-                 (and (> cycles 1)
-                      (equal interval-name "Work")
-                      (equal current-duration (duration "5 minutes"))))
+    :complete-p (do (and (> cycles 1)
+                         (equal interval-name "Work")
+                         (equal current-duration (duration "5 minutes"))))
     ;; Then, when the hammy has completed all of its cycles, play this
     ;; sound to celebrate.
     :after (do (play-sound-file "~/Misc/Sounds/all-done.wav")))
@@ -195,6 +208,9 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
 Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:duration~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
 
 ** Tips
+:PROPERTIES:
+:TOC:      :depth 0
+:END:
 
 *** Show hammy-mode in tab-bar
 
@@ -215,6 +231,23 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
       (setf tab-bar-format (append tab-bar-format '(tab-bar-format-align-right tab-bar-format-global)))))
 #+end_src
 
+
+* FAQ
+
+/Why are timers called hammys?  Isn't that silly?/
+
+Probably, but is it sillier than calling them tomatoes?  Besides, it helps to distinguish them from Emacs's timers, which are used in the implementation.
+
 * License
+:PROPERTIES:
+:TOC:      :ignore (this)
+:END:
 
 GPLv3
+
+
+* COMMENT Config
+
+# Local Variables:
+# before-save-hook: (org-make-toc)
+# End:
