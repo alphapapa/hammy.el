@@ -413,14 +413,19 @@ unsatisfied ADVANCE predicate."
                                       (ring-next (hammy-intervals hammy) interval)
                                     (ring-ref (hammy-intervals hammy) 0)))
                    (next-duration (or duration
-                                      (cl-etypecase (hammy-interval-duration next-interval)
-                                        (number (hammy-interval-duration next-interval))
-                                        (function (condition-case _err
-                                                      (funcall (hammy-interval-duration next-interval) hammy)
-                                                    (hammy-complete
-                                                     (run-hook-with-args 'hammy-complete-hook hammy)
-                                                     (message "Hammy is over!  (%s)" (hammy-name hammy))
-                                                     nil)))))))
+                                      ;; This seems a bit awkward, but we want to allow the value to be a
+                                      ;; number, a string, or a function that returns a number or string.
+                                      (pcase-exhaustive
+                                          (cl-etypecase (hammy-interval-duration next-interval)
+                                            (function (condition-case _err
+                                                          (funcall (hammy-interval-duration next-interval) hammy)
+                                                        (hammy-complete
+                                                         (run-hook-with-args 'hammy-complete-hook hammy)
+                                                         (message "Hammy is over!  (%s)" (hammy-name hammy))
+                                                         nil)))
+                                            ((or number string) (hammy-interval-duration next-interval)))
+                                        ((and (pred numberp) it) it)
+                                        ((and (pred stringp) it) (timer-duration it))))))
         (if (not (advancep))
             ;; Interval requires manual advancing.
             (progn
@@ -655,7 +660,7 @@ cycles)."
   :documentation "Get your momentum going!"
   :intervals (list (interval :name "Rest"
                              :face 'font-lock-type-face
-                             :duration (duration "5 minutes")
+                             :duration "5 minutes"
                              :before (do (announce "Rest time!")
                                          (notify "Rest time!"))
                              :advance (do (announce "Rest time is over!")
@@ -678,7 +683,7 @@ cycles)."
 (hammy-define "Move"
   :documentation "Don't forget to stretch your legs!"
   :intervals (list (interval :name "💺"
-                             :duration (duration "45 minutes")
+                             :duration "45 minutes"
                              :face 'font-lock-type-face
                              :before (do (announce "Whew!")
                                          (notify "Whew!"))
@@ -686,7 +691,7 @@ cycles)."
                                               (do (announce "Time to stretch your legs!")
                                                   (notify "Time to stretch your legs!"))))
                    (interval :name "🤸"
-                             :duration (duration "5 minutes")
+                             :duration "5 minutes"
                              :face 'font-lock-builtin-face
                              :before (do (announce "Move it!")
                                          (notify "Move it!"))
@@ -698,7 +703,7 @@ cycles)."
   :intervals
   (list
    (interval :name "Working"
-             :duration (duration "25 minutes")
+             :duration "25 minutes"
              :before (do (announce "Starting work time.")
                          (notify "Starting work time."))
              :advance (do (announce "Break time!")
@@ -709,8 +714,8 @@ cycles)."
                                ;; If a multiple of three cycles have
                                ;; elapsed, the fourth work period was
                                ;; just completed, so take a longer break.
-                               (duration "30 minutes")
-                             (duration "5 minutes")))
+                               "30 minutes"
+                             "5 minutes"))
              :before (do (announce "Starting break time.")
                          (notify "Starting break time."))
              :advance (do (announce "Break time is over!")

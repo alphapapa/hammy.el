@@ -48,7 +48,7 @@ Let's look at a classic example, the "pomodoro timer."  Here's how it's implemen
     :intervals
     (list
      (interval :name "Work"
-               :duration (duration "25 minutes")
+               :duration "25 minutes"
                :before (do (announce "Starting work time.")
                            (notify "Starting work time."))
                :advance (do (announce "Break time!")
@@ -59,8 +59,8 @@ Let's look at a classic example, the "pomodoro timer."  Here's how it's implemen
                                  ;; If a multiple of three cycles have
                                  ;; elapsed, the fourth work period was
                                  ;; just completed, so take a longer break.
-                                 (duration "30 minutes")
-                               (duration "5 minutes")))
+                                 "30 minutes"
+                               "5 minutes"))
                :before (do (announce "Starting break time.")
                            (notify "Starting break time."))
                :advance (do (announce "Break time is over!")
@@ -106,11 +106,9 @@ This timer reminds you to stand up every so often (e.g. to prevent RSI):
            ;; The name of the interval is a string, used when selecting
            ;; hammys and shown in the mode line.
            :name "💺"
-           ;; The duration of the interval in seconds (here,
-           ;; using the `duration' helper function, which
-           ;; converts a string duration to a number of
-           ;; seconds).
-           :duration (duration "45 minutes")
+           ;; The duration of the interval: a number of seconds, a string
+           ;; passed to `timer-duration', or a function which returns such.
+           :duration "45 minutes"
            ;; Optionally, a face in which to show the
            ;; interval's name in the mode line.
            :face 'font-lock-type-face
@@ -137,7 +135,7 @@ This timer reminds you to stand up every so often (e.g. to prevent RSI):
                                 (notify "Time to stretch your legs!")
                                 (play-sound-file "~/Misc/Sounds/mooove-it.wav"))))
           (interval :name "🤸"
-                    :duration (duration "5 minutes")
+                    :duration "5 minutes"
                     :face 'font-lock-builtin-face
                     :before (do (announce "Mooove it!")
                                 (notify "Mooove it!"))
@@ -161,7 +159,7 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
      (interval :name "Play"
                :face 'font-lock-type-face
                ;; The play/rest interval will always be 5 minutes long.
-               :duration (duration "5 minutes")
+               :duration "5 minutes"
                ;; Before starting the interval, announce and notify, to
                ;; show the user that the interval has begun.
                :before (do (announce "Play time!")
@@ -203,6 +201,8 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
     ;; determine what to do next.
     :complete-p (do (and (> cycles 1)
                          (equal interval-name "Work")
+                         ;; The built-in `duration' function converts
+                         ;; its argument to a number of seconds.
                          (equal current-duration (duration "5 minutes"))))
     ;; Then, when the hammy has completed all of its cycles, play this
     ;; sound to celebrate.
@@ -235,7 +235,6 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
       (setf tab-bar-format (append tab-bar-format '(tab-bar-format-align-right tab-bar-format-global)))))
 #+end_src
 
-
 * FAQ
 
 /Why are timers called hammys?  Isn't that silly?/
@@ -248,7 +247,6 @@ Probably, but is it sillier than calling them tomatoes?  Besides, it helps to di
 :END:
 
 GPLv3
-
 
 * COMMENT Config
 
