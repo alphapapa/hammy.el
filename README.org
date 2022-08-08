@@ -24,7 +24,9 @@ Hammy provides programmable, interactive interval timers for Emacs.  They can be
 :ID:       f9d7bc00-8bd4-4653-b69e-fdbb1663f5cd
 :END:
 
-Until Hammy reaches a package repository, the easiest way to install it is to use [[https://github.com/quelpa/quelpa-use-package][quelpa-use-package]], like this:
+Hammy is distributed on [[https://melpa.org/][MELPA]], so it can be installed with ~M-x package-install RET hammy RET~.
+
+Other than that, the recommended way to install it is to use [[https://github.com/quelpa/quelpa-use-package][quelpa-use-package]], like this:
 
 #+BEGIN_SRC elisp
   (use-package hammy
