@@ -72,6 +72,7 @@ Then you can use these commands, which will prompt you to choose a defined hammy
 | ~hammy-start~  | Start a hammy.                                                                            |
 | ~hammy-next~   | Advance to the next interval of a hammy (when it's defined to not advance automatically). |
 | ~hammy-toggle~ | Pause or unpause a hammy.                                                                 |
+| ~hammy-adjust~ | Adjust the durations of a hammy's intervals (which can be reset later).
 | ~hammy-reset~  | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).  |
 | ~hammy-stop~   | Stop a hammy.                                                                             |
 

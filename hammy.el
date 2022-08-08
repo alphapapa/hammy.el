@@ -297,6 +297,28 @@ Called with the hammy, and optionally a message."
 
 ;;;; Commands
 
+(defun hammy-adjust (hammy)
+  "Adjust HAMMY's interval durations."
+  (interactive (list (hammy-complete "Adjust hammy: " hammy-hammys)))
+  ;; TODO: Reset durations in `hammy-reset'.
+  (cl-labels ((adjust-interval (interval)
+                               (cl-symbol-macrolet ((original-duration
+                                                     (alist-get interval (alist-get 'original-durations (hammy-etc hammy)))))
+                                 (let* ((old-duration (hammy-interval-duration interval))
+                                        (new-duration (read-string (format "New duration (number or function) for interval %S: "
+                                                                           (hammy-interval-name interval))
+                                                                   nil nil (prin1-to-string old-duration))))
+                                   (unless (string-empty-p new-duration)
+                                     ;; TODO: Allow the user to type, e.g. "25 minutes" without enclosing quotes.
+                                     (setf new-duration (car (read-from-string new-duration))))
+                                   (when new-duration
+                                     (cl-check-type new-duration (or number function string))
+                                     (unless original-duration
+                                       ;; Only save the original duration the first time the interval is adjusted.
+                                       (setf original-duration old-duration))
+                                     (setf (hammy-interval-duration interval) new-duration))))))
+    (mapc #'adjust-interval (ring-elements (hammy-intervals hammy)))))
+
 (defun hammy-stop (hammy &optional quietly)
   "Stop HAMMY timer.
 If QUIETLY, don't say so."
@@ -333,6 +355,12 @@ If already running, restarts it."
           (hammy-interval hammy) nil
           (hammy-current-interval-start-time hammy) nil
           (hammy-overduep hammy) nil)
+    (when (alist-get 'original-durations (hammy-etc hammy))
+      ;; Restore any original durations.
+      (cl-loop for (interval . duration) in (alist-get 'original-durations (hammy-etc hammy))
+               do (progn
+                    (setf (hammy-interval-duration interval) duration)
+                    (cl-callf2 assoc-delete-all 'original-durations (hammy-etc hammy)))))
     (when runningp
       (hammy-start hammy))
     hammy))
