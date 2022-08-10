@@ -47,7 +47,7 @@
 
 (require 'cl-lib)
 (require 'ring)
-
+(require 'map)
 (require 'ts)
 
 ;;;; Structs
