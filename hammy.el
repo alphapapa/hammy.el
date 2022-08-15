@@ -67,7 +67,7 @@ it began, and the time it ended.")
   (etc nil :documentation "Alist which may be used to store any extra data.")
   (before nil :documentation "Function called before running timer.
 Called with one argument, the hammy.")
-  (after nil :documentation "Function called after timer has completed.
+  (after nil :documentation "Function(s) called after timer has completed.
 Called with one argument, the hammy.  Called when the hammy's
 completion predicate returns non-nil.")
   (complete-p nil :documentation "Predicate that returns non-nil when hammy is complete.
@@ -82,9 +82,9 @@ is complete, before starting the next interval.")
   (duration nil :documentation "Number of seconds or function that returns such.
 If a function, it is given one argument, the timer it is being
 run in.")
-  (before nil :documentation "Function called before interval begins.
+  (before nil :documentation "Function(s) called before interval begins.
 Called with one argument, the Hammy timer.")
-  (after nil :documentation "Function called when interval ends.
+  (after nil :documentation "Function(s) called when interval ends.
 Called with one argument, the Hammy timer.")
   (advance 'auto :documentation "How to advance to the next interval when this one ends.
 If nil, do so automatically.  Otherwise, a list of functions to
