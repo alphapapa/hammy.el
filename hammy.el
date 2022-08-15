@@ -70,6 +70,8 @@ Called with one argument, the hammy.")
   (after nil :documentation "Function(s) called after timer has completed.
 Called with one argument, the hammy.  Called when the hammy's
 completion predicate returns non-nil.")
+  (stopping nil :documentation "Function(s) called after stopping timer.
+Called with one argument, the hammy.  Called by `hammy-stop'.")
   (complete-p nil :documentation "Predicate that returns non-nil when hammy is complete.
 Called with one argument, the hammy.  Called after each interval
 is complete, before starting the next interval.")
@@ -360,6 +362,7 @@ If QUIETLY, don't say so."
     ;; correctly; and do it before resetting the hammy, so functions
     ;; in the stop hook can access the hammy's data before resetting.
     (run-hook-with-args 'hammy-stop-hook hammy)
+    (hammy-call (hammy-stopping hammy) hammy)
     (hammy-reset hammy)
     hammy))
 
