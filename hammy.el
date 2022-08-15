@@ -46,6 +46,7 @@
 ;;;; Requirements
 
 (require 'cl-lib)
+(require 'map)
 (require 'ring)
 
 (require 'ts)
