@@ -214,6 +214,44 @@ Here's a more interesting example, a "flywheel timer" (so called because it help
 
 Note the use of ~:descend t~ in the arguments to the ~climb~ function in the ~Work~ interval's ~:duration~ slot: because of that, it may also be known as a "ladder timer" or a "hill-climb timer", because after the work interval reaches the maximum duration of 45 minutes, it begins decreasing until it reaches the minimum duration.   In this way, the user "spins up", gaining momentum to build endurance, and then "spins down" to finish the session.  This kind of timer may be helpful when working on large projects that are difficult to get started on.
 
+Finally, an example of a "third time" timer, in which break periods are one-third as long as the last work interval:
+
+#+begin_src elisp
+  (hammy-define "⅓-time"
+    :documentation "Breaks that are ⅓ as long as the last work interval."
+    :intervals
+    (list
+     (interval :name "Work"
+               ;; It's intended that the user manually end this interval
+               ;; when ready, but we specify a maximum of 90 minutes by
+               ;; default.
+               :duration "90 minutes"
+               :before (do (announce "Starting work time (advance to break when ready).")
+                           (notify "Starting work time (advance to break when ready)."))
+               :advance (remind "10 minutes"
+                                (do (let* ((current-duration (ts-human-format-duration
+                                                              (float-time
+                                                               (time-subtract (current-time) current-interval-start-time))))
+                                           (message (format "You've worked for %s!" current-duration)))
+                                      (announce message)
+                                      (notify message)
+                                      (when hammy-sound-end-work
+                                        (play-sound-file hammy-sound-end-work))))))
+     (interval :name "Break"
+               :duration (do (pcase-let* ((`(,_interval ,start ,end) (car history))
+                                          (work-seconds (float-time (time-subtract end start))))
+                               (* work-seconds 0.33)))
+               :before (do (let ((message (format "Starting break for %s."
+                                                  (ts-human-format-duration current-duration))))
+                             (announce message)
+                             (notify message)))
+               :advance (remind "5 minutes"
+                                (do (announce "Break time is over!")
+                                    (notify "Break time is over!")
+                                    (when hammy-sound-end-break
+                                      (play-sound-file hammy-sound-end-break)))))))
+#+end_src
+
 ** Tips
 :PROPERTIES:
 :TOC:      :depth 0

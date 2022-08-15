@@ -146,7 +146,9 @@ ARGS, these pseudo-functions and forms available:
                  (do (&rest body)
                      `(lambda (hammy)
                         (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
+                                             (current-interval-start-time (hammy-current-interval-start-time hammy))
                                              (cycles (hammy-cycles hammy))
+                                             (history (hammy-history hammy))
                                              (interval (hammy-interval hammy))
                                              (interval-name (hammy-interval-name interval)))
                           (ignore hammy)
@@ -294,6 +296,14 @@ Called with the hammy, and optionally a message."
   "Functions run when a hammy completes a cycle.
 Called with the hammy, and optionally a message."
   :type 'hook)
+
+(defcustom hammy-sound-end-break nil
+  "Play this sound when a break interval ends."
+  :type '(choice file (const :tag "No sound" nil)))
+
+(defcustom hammy-sound-end-work nil
+  "Play this sound when a work interval ends."
+  :type '(choice file (const :tag "No sound" nil)))
 
 ;;;; Commands
 
@@ -748,6 +758,40 @@ cycles)."
                          (notify "Starting break time."))
              :advance (do (announce "Break time is over!")
                           (notify "Break time is over!")))))
+
+(hammy-define "⅓-time"
+  :documentation "Breaks that are ⅓ as long as the last work interval."
+  :intervals
+  (list
+   (interval :name "Work"
+             ;; It's intended that the user manually end this interval
+             ;; when ready, but we specify a maximum of 90 minutes by
+             ;; default.
+             :duration "90 minutes"
+             :before (do (announce "Starting work time (advance to break when ready).")
+                         (notify "Starting work time (advance to break when ready)."))
+             :advance (remind "10 minutes"
+                              (do (let* ((current-duration (ts-human-format-duration
+                                                            (float-time
+                                                             (time-subtract (current-time) current-interval-start-time))))
+                                         (message (format "You've worked for %s!" current-duration)))
+                                    (announce message)
+                                    (notify message)
+                                    (when hammy-sound-end-work
+                                      (play-sound-file hammy-sound-end-work))))))
+   (interval :name "Break"
+             :duration (do (pcase-let* ((`(,_interval ,start ,end) (car history))
+                                        (work-seconds (float-time (time-subtract end start))))
+                             (* work-seconds 0.33)))
+             :before (do (let ((message (format "Starting break for %s."
+                                                (ts-human-format-duration current-duration))))
+                           (announce message)
+                           (notify message)))
+             :advance (remind "5 minutes"
+                              (do (announce "Break time is over!")
+                                  (notify "Break time is over!")
+                                  (when hammy-sound-end-break
+                                    (play-sound-file hammy-sound-end-break)))))))
 
 ;;;; Footer
 
