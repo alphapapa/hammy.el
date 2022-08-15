@@ -277,7 +277,12 @@ Define a hammy with `hammy-define'.")
 
 (defcustom hammy-start-hook '((lambda (hammy) (hammy-log hammy "Starting...")))
   "Functions run when a hammy is started.
-Called with the hammy, and optionally a message."
+Called with the hammy."
+  :type 'hook)
+
+(defcustom hammy-stop-hook '((lambda (hammy) (hammy-log hammy "Stopping...")))
+  "Functions run when a hammy is stopped.
+Called with the hammy."
   :type 'hook)
 
 (defcustom hammy-complete-hook '((lambda (hammy) (hammy-log hammy "Completed.")))
@@ -350,6 +355,11 @@ If QUIETLY, don't say so."
     (when reminder
       (cancel-timer reminder)
       (setf (alist-get 'reminder (hammy-etc hammy)) nil))
+    ;; Run the hook after having stopped the hammy, so any errors in
+    ;; stop-hook functions won't prevent the hammy from stopping
+    ;; correctly; and do it before resetting the hammy, so functions
+    ;; in the stop hook can access the hammy's data before resetting.
+    (run-hook-with-args 'hammy-stop-hook hammy)
     (hammy-reset hammy)
     hammy))
 
