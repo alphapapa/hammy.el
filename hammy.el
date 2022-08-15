@@ -246,15 +246,15 @@ ARGS, these pseudo-functions and forms available:
          (push hammy hammy-hammys)
          hammy))))
 
-(defmacro hammy-run-place (place &rest args)
-  "Call PLACE with ARGS.
-If PLACE is a function, call it; if a list of functions, call
+(defun hammy-call (fn-or-fns &rest args)
+  "Call FN-OR-FNS with ARGS.
+If FN-OR-FNS is a function, call it; if a list of functions, call
 each of them; if nil, do nothing."
-  `(cl-typecase ,place
-     (function (funcall ,place ,@args))
-     (null nil)
-     (list (dolist (fn ,place)
-             (funcall fn ,@args)))))
+  (cl-typecase fn-or-fns
+    (null nil)
+    (function (apply fn-or-fns args))
+    (list (dolist (fn fn-or-fns)
+            (apply fn args)))))
 
 ;;;; Variables
 
@@ -410,7 +410,7 @@ If DURATION, set its first interval to last that many seconds."
                (null (hammy-interval hammy)))
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
-  (hammy-run-place (hammy-before hammy) hammy)
+  (hammy-call (hammy-before hammy) hammy)
   (hammy-next hammy duration :advance t)
   (push hammy hammy-active)
   hammy)
@@ -438,7 +438,7 @@ unsatisfied ADVANCE predicate."
       (run-hook-with-args 'hammy-interval-hook hammy
                           (format "Interval ended: %s"
                                   (hammy-interval-name (hammy-interval hammy))))
-      (hammy-run-place (hammy-interval-after (hammy-interval hammy)) hammy)
+      (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy)
       (when (and (advancep)
                  (equal (hammy-interval hammy)
                         (ring-ref (hammy-intervals hammy)
@@ -453,7 +453,7 @@ unsatisfied ADVANCE predicate."
         (progn
           (hammy-stop hammy 'quietly)
           (run-hook-with-args 'hammy-complete-hook hammy)
-          (hammy-run-place (hammy-after hammy) hammy)
+          (hammy-call (hammy-after hammy) hammy)
           (setf hammy-active (remove hammy hammy-active)))
       ;; Hammy not complete: start next interval.
       (pcase-let* (((cl-struct hammy interval) hammy)
@@ -479,7 +479,7 @@ unsatisfied ADVANCE predicate."
             (progn
               (hammy-log hammy "Waiting for user to advance...")
               (setf (hammy-overduep hammy) t)
-              (hammy-run-place (hammy-interval-advance (hammy-interval hammy)) hammy))
+              (hammy-call (hammy-interval-advance (hammy-interval hammy)) hammy))
           ;; Advancing.
           (hammy-log hammy (format "Elapsed: %s" (hammy-format-current-times hammy)))
           (setf (hammy-interval hammy) next-interval
@@ -487,7 +487,7 @@ unsatisfied ADVANCE predicate."
                 (hammy-current-duration hammy) next-duration
                 (hammy-overduep hammy) nil)
           (when next-duration
-            (hammy-run-place (hammy-interval-before next-interval) hammy)
+            (hammy-call (hammy-interval-before next-interval) hammy)
             (run-hook-with-args 'hammy-interval-hook hammy
                                 (format "Interval started: %s (%s)"
                                         (hammy-interval-name (hammy-interval hammy))
