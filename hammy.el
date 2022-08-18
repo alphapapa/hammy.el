@@ -584,6 +584,7 @@ cycles)."
                                 (hammy-documentation hammy))))
     (pcase (length hammys)
       (0 nil)
+      (1 (car hammys))
       (_ (let* ((map (cl-loop for hammy in hammys
                               collect (cons (describe hammy) hammy)))
                 (description (completing-read prompt map nil t)))
