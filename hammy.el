@@ -798,17 +798,31 @@ cycles)."
                                       (play-sound-file hammy-sound-end-work))))))
    (interval :name "Break"
              :duration (do (pcase-let* ((`(,_interval ,start ,end) (car history))
-                                        (work-seconds (float-time (time-subtract end start))))
-                             (* work-seconds 0.33)))
+                                        (work-seconds (float-time (time-subtract end start)))
+                                        (duration (* work-seconds 0.33)))
+                             (when (alist-get 'unused-break etc)
+                               ;; Add unused break time.
+                               (cl-incf duration (alist-get 'unused-break etc))
+                               (setf (alist-get 'unused-break etc) nil))
+                             duration))
              :before (do (let ((message (format "Starting break for %s."
                                                 (ts-human-format-duration current-duration))))
                            (announce message)
                            (notify message)))
+             :after (do (let* ((elapsed (float-time
+                                         (time-subtract (current-time) current-interval-start-time)))
+                               (unused (- current-duration elapsed)))
+                          (when (> unused 0)
+                            ;; "Bank" unused break time.
+                            (if (alist-get 'unused-break etc)
+                                (cl-incf (alist-get 'unused-break etc) unused)
+                              (setf (alist-get 'unused-break etc) unused)))))
              :advance (remind "5 minutes"
                               (do (announce "Break time is over!")
                                   (notify "Break time is over!")
                                   (when hammy-sound-end-break
-                                    (play-sound-file hammy-sound-end-break)))))))
+                                    (play-sound-file hammy-sound-end-break))))))
+  :stopping (do (setf (alist-get 'unused-break etc) nil)))
 
 ;;;; Footer
 
