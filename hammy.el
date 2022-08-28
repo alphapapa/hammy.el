@@ -375,6 +375,7 @@ If already running, restarts it."
     (when runningp
       (hammy-stop hammy 'quietly))
     (setf (hammy-cycles hammy) 0
+          (hammy-etc hammy) nil
           (hammy-history hammy) nil
           (hammy-interval hammy) nil
           (hammy-current-interval-start-time hammy) nil
