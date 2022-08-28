@@ -151,6 +151,7 @@ ARGS, these pseudo-functions and forms available:
                         (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
                                              (current-interval-start-time (hammy-current-interval-start-time hammy))
                                              (cycles (hammy-cycles hammy))
+                                             (etc (hammy-etc hammy))
                                              (history (hammy-history hammy))
                                              (interval (hammy-interval hammy))
                                              (interval-name (hammy-interval-name interval)))
