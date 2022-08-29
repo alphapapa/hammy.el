@@ -71,12 +71,13 @@ Let's look at a classic example, the "pomodoro timer."  Here's how it's implemen
 
 Then you can use these commands, which will prompt you to choose a defined hammy:
 
-| ~hammy-start~  | Start a hammy.                                                                            |
-| ~hammy-next~   | Advance to the next interval of a hammy (when it's defined to not advance automatically). |
-| ~hammy-toggle~ | Pause or unpause a hammy.                                                                 |
-| ~hammy-adjust~ | Adjust the durations of a hammy's intervals (which can be reset later).
-| ~hammy-reset~  | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).  |
-| ~hammy-stop~   | Stop a hammy.                                                                             |
+| ~hammy-start~              | Start a hammy.                                                                                                                                                                                             |
+| ~hammy-start-org-clock-in~ | Call ~org-clock-in~, then ~hammy-start~.  (The Org task will then automatically be clocked out during the hammy's next interval (and when the hammy is stopped), and back in when the first interval resumes.) |
+| ~hammy-next~               | Advance to the next interval of a hammy (when it's defined to not advance automatically).                                                                                                                  |
+| ~hammy-toggle~             | Pause or unpause a hammy.                                                                                                                                                                                  |
+| ~hammy-adjust~             | Adjust the durations of a hammy's intervals (which can be reset later).                                                                                                                                    |
+| ~hammy-reset~              | Reset a hammy (useful when a hammy is defined to behave differently the longer it runs).                                                                                                                   |
+| ~hammy-stop~               | Stop a hammy.                                                                                                                                                                                              |
 
 You may also use these commands:
 

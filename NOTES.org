@@ -79,3 +79,22 @@ Could be something like:
   "Play=5-15s;Work=5-45s,stop"
 #+end_src
 
+* DONE Org clocking
+:LOGBOOK:
+- State "DONE"       from "PROJECT"    [2022-08-29 Mon 03:41] \\
+  Seems to work well.
+- State "PROJECT"    from              [2022-08-29 Mon 02:05]
+:END:
+
+It would be helpful to be able to integrate clocking Org tasks, but how?  Some ideas:
+
+1. A command that starts a hammy and clocks in to an Org task.
+   - Probably the most flexible option.  Just call, e.g. ~hammy-start-org-clock-in~ instead of ~hammy-start~.
+   - That command should probably set an entry in ~hammy-etc~ to show which Org task was clocked in, and then ~hammy-stop~, et al. should check that entry and clock out when necessary.
+2. A mode that causes ~hammy-start~ to clock in to an Org task.
+   - Less flexible in that the user might want to start another timer without clocking and would have to toggle the mode to do so.
+3. Add a function to ~hammy-start-hook~ to clock in to an Org task.
+   - Also not very flexible, because the user probably wouldn't always want to clock in when starting a timer.
+4. Define individual timers to clock in to an Org task.
+   - Probably the least flexible option.
+

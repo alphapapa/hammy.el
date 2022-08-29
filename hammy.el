@@ -363,6 +363,30 @@ If DURATION, set its first interval to last that many seconds."
   (push hammy hammy-active)
   hammy)
 
+;;;###autoload
+(defun hammy-start-org-clock-in (&rest _ignore)
+  "Call `org-clock-in', then `hammy-start'.
+The Org task will then automatically be clocked out during the
+hammy's second interval (and when the hammy is stopped), and back
+in when the first interval resumes.
+
+Returns the hammy from `hammy-start'.  Assumes that the hammy's
+first interval is the work interval (i.e. the one during which
+the task should be clocked in)."
+  (interactive)
+  (call-interactively #'org-clock-in)
+  (let ((hammy (call-interactively #'hammy-start)))
+    (setf (alist-get 'org-clock-hd-marker (hammy-etc hammy))
+          ;; `org-clock-out' kills the marker, so we have to copy it
+          ;; for future reference.
+          (copy-marker org-clock-hd-marker))
+    (cl-pushnew #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy))
+                :test #'equal)
+    (cl-pushnew #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy))
+                :test #'equal)
+    (cl-pushnew #'hammy--org-clock-out (hammy-stopping hammy) :test #'equal)
+    hammy))
+
 (defun hammy-stop (hammy &optional quietly)
   "Stop HAMMY timer.
 If QUIETLY, don't say so."
@@ -605,6 +629,22 @@ cycles)."
   "Announce MESSAGE in the echo area for HAMMY."
   (message "Hammy (%s): %s"
            (hammy-name hammy) message))
+
+(defun hammy--org-clock-in (hammy)
+  "Clock in to HAMMY's Org task."
+  (when-let ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
+    (org-with-point-at marker
+      (org-clock-in))))
+
+(defun hammy--org-clock-out (hammy)
+  "Clock out of HAMMY's Org task."
+  (cl-symbol-macrolet ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
+    (when (and (org-clocking-p)
+               marker
+               (equal org-clock-hd-marker marker))
+      ;; The currently clocked-in task is the one clocked in by this
+      ;; hammy: clock out of it.
+      (org-clock-out))))
 
 ;;;; Mode
 
