@@ -418,7 +418,8 @@ If paused, resume it.  If running, pause it."
   "Start HAMMY and return it.
 If DURATION, set its first interval to last that many seconds."
   (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
-                     current-prefix-arg))
+                     (cl-typecase current-prefix-arg
+                       (number current-prefix-arg))))
   (unless (and (= 0 (hammy-cycles hammy))
                (null (hammy-history hammy))
                (null (hammy-interval hammy)))
