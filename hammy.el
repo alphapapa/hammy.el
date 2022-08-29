@@ -432,7 +432,7 @@ If DURATION, set its first interval to last that many seconds."
 
 (cl-defun hammy-next (hammy &optional duration &key advance)
   "Advance to HAMMY's next interval.
-If DURATION (interactivel, with numeric prefix), set the
+If DURATION (interactively, with numeric prefix), set the
 interval's duration to DURATION seconds.  If ADVANCE, advance to
 the next interval even if the previous interval has an
 unsatisfied ADVANCE predicate."
