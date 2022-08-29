@@ -146,6 +146,9 @@ ARGS, these pseudo-functions and forms available:
                  (listify (place)
                           `(unless (listp ,place)
                              (setf ,place (list ,place))))
+                 (listify-functions (place)
+                                    `(when (functionp ,place)
+                                       (setf ,place (list ,place))))
                  (do (&rest body)
                      `(lambda (hammy)
                         (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
@@ -244,6 +247,11 @@ ARGS, these pseudo-functions and forms available:
        (let* ((hammy (make-hammy :name ,name ,@args))
               (ring (make-ring (length (hammy-intervals hammy)))))
          (dolist (interval (hammy-intervals hammy))
+           (progn
+             ;; Ensure that function slots are lists of functions, not just a function.
+             (listify-functions (hammy-interval-before interval))
+             (listify-functions (hammy-interval-after interval))
+             (listify-functions (hammy-interval-advance interval)))
            (ring-insert-at-beginning ring interval))
          (setf (hammy-intervals hammy) ring)
          (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
