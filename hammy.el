@@ -346,6 +346,23 @@ Called with the hammy, and optionally a message."
                                      (setf (hammy-interval-duration interval) new-duration))))))
     (mapc #'adjust-interval (ring-elements (hammy-intervals hammy)))))
 
+;;;###autoload
+(defun hammy-start (hammy &optional duration)
+  "Start HAMMY and return it.
+If DURATION, set its first interval to last that many seconds."
+  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
+                     (cl-typecase current-prefix-arg
+                       (number current-prefix-arg))))
+  (unless (and (= 0 (hammy-cycles hammy))
+               (null (hammy-history hammy))
+               (null (hammy-interval hammy)))
+    (user-error "Hammy already started: %s" (hammy-format hammy)))
+  (run-hook-with-args 'hammy-start-hook hammy)
+  (hammy-call (hammy-before hammy) hammy)
+  (hammy-next hammy duration :advance t)
+  (push hammy hammy-active)
+  hammy)
+
 (defun hammy-stop (hammy &optional quietly)
   "Stop HAMMY timer.
 If QUIETLY, don't say so."
@@ -375,60 +392,6 @@ If QUIETLY, don't say so."
     (hammy-call (hammy-stopping hammy) hammy)
     (hammy-reset hammy)
     hammy))
-
-(defun hammy-reset (hammy)
-  "Reset HAMMY timer.
-If already running, restarts it."
-  (interactive (list (hammy-complete "Reset hammy: " hammy-hammys)))
-  (let ((runningp (hammy-timer hammy)))
-    (when runningp
-      (hammy-stop hammy 'quietly))
-    (setf (hammy-cycles hammy) 0
-          (hammy-etc hammy) nil
-          (hammy-history hammy) nil
-          (hammy-interval hammy) nil
-          (hammy-current-interval-start-time hammy) nil
-          (hammy-overduep hammy) nil)
-    (when (alist-get 'original-durations (hammy-etc hammy))
-      ;; Restore any original durations.
-      (cl-loop for (interval . duration) in (alist-get 'original-durations (hammy-etc hammy))
-               do (progn
-                    (setf (hammy-interval-duration interval) duration)
-                    (cl-callf2 assoc-delete-all 'original-durations (hammy-etc hammy)))))
-    (when runningp
-      (hammy-start hammy))
-    hammy))
-
-(defun hammy-toggle (hammy)
-  "Toggle HAMMY timer.
-If paused, resume it.  If running, pause it."
-  (interactive (list (hammy-complete "Toggle hammy: " hammy-hammys)))
-  (if (hammy-timer hammy)
-      (let ((remaining-time (float-time (time-subtract (timer--time hammy) (current-time)))))
-        (setf (alist-get 'remaining-time (hammy-etc hammy)) remaining-time)
-        (hammy-stop hammy))
-    (hammy-start hammy (alist-get 'remaining-time (hammy-etc hammy)))
-    (setf (alist-get 'remaining-time (hammy-etc hammy)) nil))
-  hammy)
-
-;;;; Functions
-
-;;;###autoload
-(defun hammy-start (hammy &optional duration)
-  "Start HAMMY and return it.
-If DURATION, set its first interval to last that many seconds."
-  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
-                     (cl-typecase current-prefix-arg
-                       (number current-prefix-arg))))
-  (unless (and (= 0 (hammy-cycles hammy))
-               (null (hammy-history hammy))
-               (null (hammy-interval hammy)))
-    (user-error "Hammy already started: %s" (hammy-format hammy)))
-  (run-hook-with-args 'hammy-start-hook hammy)
-  (hammy-call (hammy-before hammy) hammy)
-  (hammy-next hammy duration :advance t)
-  (push hammy hammy-active)
-  hammy)
 
 (cl-defun hammy-next (hammy &optional duration &key advance)
   "Advance to HAMMY's next interval.
@@ -510,6 +473,48 @@ unsatisfied ADVANCE predicate."
             (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))))
   hammy)
 
+(defun hammy-reset (hammy)
+  "Reset HAMMY timer.
+If already running, restarts it."
+  (interactive (list (hammy-complete "Reset hammy: " hammy-hammys)))
+  (let ((runningp (hammy-timer hammy)))
+    (when runningp
+      (hammy-stop hammy 'quietly))
+    (setf (hammy-cycles hammy) 0
+          (hammy-etc hammy) nil
+          (hammy-history hammy) nil
+          (hammy-interval hammy) nil
+          (hammy-current-interval-start-time hammy) nil
+          (hammy-overduep hammy) nil)
+    (when (alist-get 'original-durations (hammy-etc hammy))
+      ;; Restore any original durations.
+      (cl-loop for (interval . duration) in (alist-get 'original-durations (hammy-etc hammy))
+               do (progn
+                    (setf (hammy-interval-duration interval) duration)
+                    (cl-callf2 assoc-delete-all 'original-durations (hammy-etc hammy)))))
+    (when runningp
+      (hammy-start hammy))
+    hammy))
+
+(defun hammy-toggle (hammy)
+  "Toggle HAMMY timer.
+If paused, resume it.  If running, pause it."
+  (interactive (list (hammy-complete "Toggle hammy: " hammy-hammys)))
+  (if (hammy-timer hammy)
+      (let ((remaining-time (float-time (time-subtract (timer--time hammy) (current-time)))))
+        (setf (alist-get 'remaining-time (hammy-etc hammy)) remaining-time)
+        (hammy-stop hammy))
+    (hammy-start hammy (alist-get 'remaining-time (hammy-etc hammy)))
+    (setf (alist-get 'remaining-time (hammy-etc hammy)) nil))
+  hammy)
+
+(defun hammy-view-log ()
+  "Show Hammy log buffer."
+  (interactive)
+  (pop-to-buffer (hammy-log-buffer)))
+
+;;;; Functions
+
 (defun hammy-format (hammy &optional message)
   "Return formatted status for HAMMY, optionally with MESSAGE."
   (let* ((interval (cond ((hammy-interval hammy)
@@ -581,11 +586,6 @@ cycles)."
   (with-current-buffer (get-buffer-create hammy-log-buffer-name)
     (read-only-mode)
     (current-buffer)))
-
-(defun hammy-view-log ()
-  "Show Hammy log buffer."
-  (interactive)
-  (pop-to-buffer (hammy-log-buffer)))
 
 (defun hammy-complete (prompt hammys)
   "Return one of HAMMYS selected with completion and PROMPT."
