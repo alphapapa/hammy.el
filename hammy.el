@@ -535,11 +535,6 @@ If paused, resume it.  If running, pause it."
     (setf (alist-get 'remaining-time (hammy-etc hammy)) nil))
   hammy)
 
-(defun hammy-view-log ()
-  "Show Hammy log buffer."
-  (interactive)
-  (pop-to-buffer (hammy-log-buffer)))
-
 ;;;; Functions
 
 (defun hammy-format (hammy &optional message)
@@ -607,12 +602,6 @@ cycles)."
                             (t history))))
     (cl-loop for (_interval start-time end-time) in intervals
              sum (float-time (time-subtract end-time start-time)))))
-
-(defun hammy-log-buffer ()
-  "Return Hammy log buffer."
-  (with-current-buffer (get-buffer-create hammy-log-buffer-name)
-    (read-only-mode)
-    (current-buffer)))
 
 (defun hammy-complete (prompt hammys)
   "Return one of HAMMYS selected with completion and PROMPT."
@@ -755,6 +744,25 @@ cycles)."
   "Force updating of all mode lines when a hammy is active."
   (when hammy-active
     (force-mode-line-update 'all)))
+
+;;;; Log buffer
+
+(define-derived-mode hammy-log-mode read-only-mode "Hammy-Log")
+
+(progn
+  (define-key hammy-log-mode-map "q" #'bury-buffer))
+
+(defun hammy-view-log ()
+  "Show Hammy log buffer."
+  (interactive)
+  (pop-to-buffer (hammy-log-buffer)))
+
+(defun hammy-log-buffer ()
+  "Return Hammy log buffer."
+  (or (get-buffer hammy-log-buffer-name)
+      (with-current-buffer (get-buffer-create hammy-log-buffer-name)
+        (hammy-log-mode)
+        (current-buffer))))
 
 ;;;; Notifications
 
