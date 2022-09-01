@@ -710,12 +710,12 @@ cycles)."
                                          (- (hammy-current-duration hammy)
                                             (float-time (time-subtract (current-time)
                                                                        (hammy-current-interval-start-time hammy)))))))
-                         (format "%s%s(%s:%s)"
+                         (format "%s(%s%s:%s)"
+                                 (hammy-name hammy)
                                  (if (hammy-overduep hammy)
                                      (propertize hammy-mode-lighter-overdue
                                                  'face 'hammy-mode-lighter-overdue)
                                    "")
-                                 (hammy-name hammy)
                                  (propertize (hammy-interval-name (hammy-interval hammy))
                                              'face (hammy-interval-face (hammy-interval hammy)))
                                  (concat (if (hammy-overduep hammy)
