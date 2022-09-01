@@ -50,6 +50,10 @@
 (require 'map)
 (require 'ring)
 
+(eval-when-compile
+  ;; For `org-with-point-at'.
+  (require 'org-macs))
+
 (require 'ts)
 
 ;;;; Structs
@@ -271,6 +275,8 @@ each of them; if nil, do nothing."
 
 ;;;; Variables
 
+(defvar org-clock-hd-marker)
+
 (defvar hammy-hammys nil
   "List of defined hammys.
 Define a hammy with `hammy-define'.")
@@ -377,15 +383,11 @@ the task should be clocked in)."
   (interactive)
   (call-interactively #'org-clock-in)
   (let ((hammy (call-interactively #'hammy-start)))
-    (setf (alist-get 'org-clock-hd-marker (hammy-etc hammy))
-          ;; `org-clock-out' kills the marker, so we have to copy it
-          ;; for future reference.
-          (copy-marker org-clock-hd-marker))
-    (cl-pushnew #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy))
-                :test #'equal)
-    (cl-pushnew #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy))
-                :test #'equal)
-    (cl-pushnew #'hammy--org-clock-out (hammy-stopping hammy) :test #'equal)
+    (cl-macrolet ((pushfn (fn place)
+                          `(cl-pushnew ,fn ,place :test #'equal)))
+      (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
+      (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
+      (pushfn #'hammy--org-clock-out (hammy-stopping hammy)))
     hammy))
 
 (defun hammy-stop (hammy &optional quietly)
@@ -631,22 +633,28 @@ cycles)."
   (message "Hammy (%s): %s"
            (hammy-name hammy) message))
 
+(declare-function org-clock-in "org-clock")
 (defun hammy--org-clock-in (hammy)
   "Clock in to HAMMY's Org task."
-  (when-let ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
-    (org-with-point-at marker
-      (org-clock-in))))
+  (cl-symbol-macrolet ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
+    (when marker
+      (org-with-point-at marker
+        (org-clock-in))
+      ;; Unset the saved marker, because it will be saved again when
+      ;; clocking out.
+      (setf marker nil))))
 
-(declare-function org-clocking-p "org")
+(declare-function org-clocking-p "org-clock")
+(declare-function org-clock-out "org-clock")
 (defun hammy--org-clock-out (hammy)
   "Clock out of HAMMY's Org task."
-  (cl-symbol-macrolet ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
-    (when (and (org-clocking-p)
-               marker
-               (equal org-clock-hd-marker marker))
-      ;; The currently clocked-in task is the one clocked in by this
-      ;; hammy: clock out of it.
-      (org-clock-out))))
+  (when (org-clocking-p)
+    ;; Record the clocked-in task so we can clock back in to it later.
+    ;; `org-clock-out' kills the marker, so we have to copy it for
+    ;; future reference.
+    (setf (alist-get 'org-clock-hd-marker (hammy-etc hammy))
+          (copy-marker org-clock-hd-marker))
+    (org-clock-out)))
 
 ;;;; Mode
 
