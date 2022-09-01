@@ -722,22 +722,18 @@ cycles)."
                                              ;; interval (i.e. "T-minus...") .
                                              "+" "-")
                                          (ts-human-format-duration remaining 'abbr))))))
-    (let ((hammys (cl-remove-if-not (lambda (hammy)
-                                      (or (hammy-timer hammy)
-                                          (alist-get 'reminder (hammy-etc hammy))))
-                                    hammy-hammys)))
-      (if hammys
-          (concat (propertize hammy-mode-lighter-prefix
-                              'face 'hammy-mode-lighter-prefix-active)
-                  ":"
-                  (mapconcat #'format-hammy hammys ",") " ")
-        ;; No active hammys.
-        (when hammy-mode-always-show-lighter
-          (concat (propertize hammy-mode-lighter-prefix
-                              'face 'hammy-mode-lighter-prefix-inactive)
-                  (if hammy-mode-lighter-suffix-inactive
-                      (concat ":" hammy-mode-lighter-suffix-inactive))
-                  " "))))))
+    (if hammy-active
+        (concat (propertize hammy-mode-lighter-prefix
+                            'face 'hammy-mode-lighter-prefix-active)
+                ":"
+                (mapconcat #'format-hammy hammy-active ",") " ")
+      ;; No active hammys.
+      (when hammy-mode-always-show-lighter
+        (concat (propertize hammy-mode-lighter-prefix
+                            'face 'hammy-mode-lighter-prefix-inactive)
+                (if hammy-mode-lighter-suffix-inactive
+                    (concat ":" hammy-mode-lighter-suffix-inactive))
+                " ")))))
 
 (defun hammy--mode-line-update (&rest _ignore)
   "Force updating of all mode lines when a hammy is active."
