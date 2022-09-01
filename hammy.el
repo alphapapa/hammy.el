@@ -42,6 +42,7 @@
 
 ;; TODO: Pausing.
 ;; TODO: Summarize logged interval times.
+;; TODO: Menu bar/clicking for mode line lighter.  See `tab-bar-menu-bar', et al.
 
 ;;;; Requirements
 
