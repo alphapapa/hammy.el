@@ -458,8 +458,7 @@ unsatisfied ADVANCE predicate."
         (progn
           (hammy-stop hammy 'quietly)
           (run-hook-with-args 'hammy-complete-hook hammy)
-          (hammy-call (hammy-after hammy) hammy)
-          (setf hammy-active (remove hammy hammy-active)))
+          (hammy-call (hammy-after hammy) hammy))
       ;; Hammy not complete: start next interval.
       (pcase-let* (((cl-struct hammy interval) hammy)
                    (next-interval (if interval
