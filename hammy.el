@@ -636,6 +636,7 @@ cycles)."
     (org-with-point-at marker
       (org-clock-in))))
 
+(declare-function org-clocking-p "org")
 (defun hammy--org-clock-out (hammy)
   "Clock out of HAMMY's Org task."
   (cl-symbol-macrolet ((marker (alist-get 'org-clock-hd-marker (hammy-etc hammy))))
