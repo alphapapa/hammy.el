@@ -354,19 +354,26 @@ Called with the hammy, and optionally a message."
     (mapc #'adjust-interval (ring-elements (hammy-intervals hammy)))))
 
 ;;;###autoload
-(defun hammy-start (hammy &optional duration)
+(cl-defun hammy-start (hammy &key duration interval)
   "Start HAMMY and return it.
-If DURATION, set its first interval to last that many seconds."
-  (interactive (list (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))
-                     (cl-typecase current-prefix-arg
-                       (number current-prefix-arg))))
+If DURATION, set its first interval to last that many seconds.
+INTERVAL may be an interval in the hammy to start
+with (interactively, with universal prefix, prompt for the
+interval with completion)."
+  (interactive (let ((hammy (hammy-complete "Start hammy: " (cl-remove-if #'hammy-timer hammy-hammys))))
+                 (list hammy
+                       :duration (cl-typecase current-prefix-arg
+                                   (number current-prefix-arg))
+                       :interval (cl-typecase current-prefix-arg
+                                   (null nil)
+                                   (list (hammy-complete-interval hammy :prompt "Start with interval: "))))))
   (unless (and (= 0 (hammy-cycles hammy))
                (null (hammy-history hammy))
                (null (hammy-interval hammy)))
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
   (hammy-call (hammy-before hammy) hammy)
-  (hammy-next hammy duration :advance t)
+  (hammy-next hammy :duration duration :advance t :interval interval)
   (push hammy hammy-active)
   hammy)
 
@@ -420,13 +427,22 @@ If QUIETLY, don't say so."
     (hammy-reset hammy)
     hammy))
 
-(cl-defun hammy-next (hammy &optional duration &key advance)
+(cl-defun hammy-next (hammy &key duration advance interval)
   "Advance to HAMMY's next interval.
 If DURATION (interactively, with numeric prefix), set the
 interval's duration to DURATION seconds.  If ADVANCE, advance to
 the next interval even if the previous interval has an
-unsatisfied ADVANCE predicate."
-  (interactive (list (hammy-complete "Advance hammy: " hammy-active) nil :advance t))
+unsatisfied ADVANCE predicate.  INTERVAL may be an interval in
+the hammy to advance to (interactively, with universal prefix,
+prompt for the interval with completion)."
+  (interactive (let ((hammy (hammy-complete "Advance hammy: " hammy-active)))
+                 (list hammy
+                       :duration (cl-typecase current-prefix-arg
+                                   (number current-prefix-arg))
+                       :advance t
+                       :interval (cl-typecase current-prefix-arg
+                                   (null nil)
+                                   (list (hammy-complete-interval hammy :prompt "Advance to interval: "))))))
   (when (hammy-timer hammy)
     ;; Cancel any outstanding timer.
     (cancel-timer (hammy-timer hammy))
@@ -460,10 +476,11 @@ unsatisfied ADVANCE predicate."
           (run-hook-with-args 'hammy-complete-hook hammy)
           (hammy-call (hammy-after hammy) hammy))
       ;; Hammy not complete: start next interval.
-      (pcase-let* (((cl-struct hammy interval) hammy)
-                   (next-interval (if interval
-                                      (ring-next (hammy-intervals hammy) interval)
-                                    (ring-ref (hammy-intervals hammy) 0)))
+      (pcase-let* (((cl-struct hammy (interval current-interval)) hammy)
+                   (next-interval (or interval
+                                      (if current-interval
+                                          (ring-next (hammy-intervals hammy) current-interval)
+                                        (ring-ref (hammy-intervals hammy) 0))))
                    (next-duration (or duration
                                       ;; This seems a bit awkward, but we want to allow the value to be a
                                       ;; number, a string, or a function that returns a number or string.
@@ -535,6 +552,16 @@ If paused, resume it.  If running, pause it."
   hammy)
 
 ;;;; Functions
+
+(cl-defun hammy-complete-interval (hammy &key (prompt "Interval: "))
+  "Return an interval selected in HAMMY with completion.
+PROMPT may be specified."
+  (let* ((intervals (ring-elements (hammy-intervals hammy)))
+         (names (mapcar #'hammy-interval-name intervals))
+         (selected-name (completing-read prompt names nil t)))
+    (cl-find selected-name intervals
+             :test (lambda (name interval)
+                     (equal name (hammy-interval-name interval))))))
 
 (defun hammy-format (hammy &optional message)
   "Return formatted status for HAMMY, optionally with MESSAGE."
