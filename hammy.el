@@ -435,14 +435,15 @@ the next interval even if the previous interval has an
 unsatisfied ADVANCE predicate.  INTERVAL may be an interval in
 the hammy to advance to (interactively, with universal prefix,
 prompt for the interval with completion)."
-  (interactive (let ((hammy (hammy-complete "Advance hammy: " hammy-active)))
-                 (list hammy
-                       :duration (cl-typecase current-prefix-arg
-                                   (number current-prefix-arg))
-                       :advance t
-                       :interval (cl-typecase current-prefix-arg
-                                   (null nil)
-                                   (list (hammy-complete-interval hammy :prompt "Advance to interval: "))))))
+  (interactive (if-let ((hammy (hammy-complete "Advance hammy: " hammy-active)))
+                   (list hammy
+                         :duration (cl-typecase current-prefix-arg
+                                     (number current-prefix-arg))
+                         :advance t
+                         :interval (cl-typecase current-prefix-arg
+                                     (null nil)
+                                     (list (hammy-complete-interval hammy :prompt "Advance to interval: "))))
+                 (user-error (substitute-command-keys "No active hammys (use \"\\[hammy-start]\")"))))
   (when (hammy-timer hammy)
     ;; Cancel any outstanding timer.
     (cancel-timer (hammy-timer hammy))
