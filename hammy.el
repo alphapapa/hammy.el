@@ -770,7 +770,8 @@ cycles)."
 
 ;;;; Log buffer
 
-(define-derived-mode hammy-log-mode read-only-mode "Hammy-Log")
+(define-derived-mode hammy-log-mode read-only-mode "Hammy-Log"
+  :interactive nil)
 
 (progn
   (define-key hammy-log-mode-map "q" #'bury-buffer))
