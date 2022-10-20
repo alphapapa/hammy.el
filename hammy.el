@@ -622,13 +622,16 @@ If INTERVAL (an interval struct or an interval name string),
 return the elapsed time for that interval (summed across all
 cycles)."
   (pcase-let* (((cl-struct hammy history) hammy)
-               (intervals (cl-typecase interval
-                            (hammy-interval (list interval))
-                            (string (cl-remove-if-not (lambda (element)
-                                                        (equal interval (hammy-interval-name (car element))))
-                                                      history))
-                            (t history))))
-    (cl-loop for (_interval start-time end-time) in intervals
+               (interval-history
+                (cl-typecase interval
+                  (hammy-interval (cl-remove-if-not (lambda (element)
+                                                      (eq interval (car element)))
+                                                    history))
+                  (string (cl-remove-if-not (lambda (element)
+                                              (equal interval (hammy-interval-name (car element))))
+                                            history))
+                  (t history))))
+    (cl-loop for (_interval start-time end-time) in interval-history
              sum (float-time (time-subtract end-time start-time)))))
 
 (defun hammy-complete (prompt hammys)
