@@ -396,6 +396,7 @@ the task should be clocked in)."
     (cl-macrolet ((pushfn (fn place)
                           `(cl-pushnew ,fn ,place :test #'equal)))
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
+      ;; FIXME: The user is clocked out when the interval "ends", but before the user advances it.
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-stopping hammy)))
     hammy))
@@ -514,6 +515,7 @@ prompt for the interval with completion)."
                 (hammy-overduep hammy) nil)
           (when next-duration
             (hammy-call (hammy-interval-before next-interval) hammy)
+            ;; TODO: Mention elapsed time of just-completed interval.
             (run-hook-with-args 'hammy-interval-hook hammy
                                 (format "Interval started: %s (%s)"
                                         (hammy-interval-name (hammy-interval hammy))
