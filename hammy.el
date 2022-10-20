@@ -422,6 +422,7 @@ If QUIETLY, don't say so."
     ;; stop-hook functions won't prevent the hammy from stopping
     ;; correctly; and do it before resetting the hammy, so functions
     ;; in the stop hook can access the hammy's data before resetting.
+    (hammy--record-interval hammy)
     (run-hook-with-args 'hammy-stop-hook hammy)
     (hammy-call (hammy-stopping hammy) hammy)
     (hammy-reset hammy)
@@ -456,7 +457,7 @@ prompt for the interval with completion)."
                  (null (hammy-history hammy))
                  (null (hammy-interval hammy)))
       ;; Hammy already started, interval completed.
-      (push (list (hammy-interval hammy) (hammy-current-interval-start-time hammy) (current-time)) (hammy-history hammy))
+      (hammy--record-interval hammy)
       (run-hook-with-args 'hammy-interval-hook hammy
                           (format "Interval ended: %s"
                                   (hammy-interval-name (hammy-interval hammy))))
@@ -671,6 +672,13 @@ cycles)."
     (setf (alist-get 'org-clock-hd-marker (hammy-etc hammy))
           (copy-marker org-clock-hd-marker))
     (org-clock-out)))
+
+(defun hammy--record-interval (hammy)
+  "Record current interval in HAMMY's history."
+  (push (list (hammy-interval hammy)
+              (hammy-current-interval-start-time hammy)
+              (current-time))
+        (hammy-history hammy)))
 
 ;;;; Mode
 
