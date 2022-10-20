@@ -299,12 +299,15 @@ Define a hammy with `hammy-define'.")
 Called with the hammy."
   :type 'hook)
 
-(defcustom hammy-stop-hook '((lambda (hammy) (hammy-log hammy "Stopping...")))
+(defcustom hammy-stop-hook '((lambda (hammy)
+                               (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy is stopped.
 Called with the hammy."
   :type 'hook)
 
-(defcustom hammy-complete-hook '((lambda (hammy) (hammy-log hammy "Completed.")))
+(defcustom hammy-complete-hook '((lambda (hammy)
+                                   (hammy-log hammy "Completed.")
+                                   (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy is completed.
 That is, when the hammy completes its programmed cycles (not when
 manually interrupted).  Called with the hammy, and optionally a
@@ -652,6 +655,19 @@ cycles)."
   "Announce MESSAGE in the echo area for HAMMY."
   (message "Hammy (%s): %s"
            (hammy-name hammy) message))
+
+(defun hammy-summary (hammy)
+  "Return a summary string for HAMMY.
+Summary includes elapsed times, etc."
+  (format "Total elapsed:%s  Intervals:%s  Cycles:%s"
+          (ts-human-format-duration (hammy-elapsed hammy) 'abbr)
+          (mapconcat (lambda (interval)
+                       (format "(%s:%s)"
+                               (hammy-interval-name interval)
+                               (ts-human-format-duration (hammy-elapsed hammy interval) 'abbr)))
+                     (ring-elements (hammy-intervals hammy))
+                     "")
+          (hammy-cycles hammy)))
 
 (declare-function org-clock-in "org-clock")
 (defun hammy--org-clock-in (hammy)
