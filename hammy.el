@@ -503,15 +503,17 @@ prompt for the interval with completion)."
               (hammy-log hammy "Waiting for user to advance...")
               (setf (hammy-overduep hammy) t)
               (hammy-call (hammy-interval-advance (hammy-interval hammy)) hammy))
-          ;; Advancing.
-          (hammy--record-interval hammy)
-          (hammy-log hammy (format "Elapsed: %s" (hammy-format-current-times hammy)))
-          ;; NOTE: We call the interval-hook and the interval's after
-          ;; functions when actually advancing to the next interval.
-          (run-hook-with-args 'hammy-interval-hook hammy
-                              (format "Interval ended: %s"
-                                      (hammy-interval-name (hammy-interval hammy))))
-          (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy)
+          ;; Automatically advancing, manually advancing, or starting the hammy.
+          (when (hammy-interval hammy)
+            ;; Advancing to the next interval (rather than starting the hammy).
+            ;; NOTE: We call the interval-hook and the interval's after
+            ;; functions when actually advancing to the next interval.
+            (hammy--record-interval hammy)
+            (hammy-log hammy (format "Elapsed: %s" (hammy-format-current-times hammy)))
+            (run-hook-with-args 'hammy-interval-hook hammy
+                                (format "Interval ended: %s"
+                                        (hammy-interval-name (hammy-interval hammy))))
+            (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy))
           (setf (hammy-interval hammy) next-interval
                 (hammy-current-interval-start-time hammy) (current-time)
                 (hammy-current-duration hammy) next-duration
