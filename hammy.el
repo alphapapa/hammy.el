@@ -457,9 +457,7 @@ prompt for the interval with completion)."
                () (or (and (hammy-interval hammy)
                            (eq 'auto (hammy-interval-advance (hammy-interval hammy))))
                       advance)))
-    (unless (and (= 0 (hammy-cycles hammy))
-                 (null (hammy-history hammy))
-                 (null (hammy-interval hammy)))
+    (when (hammy-interval hammy)
       ;; Hammy already started, interval completed (or ready to be
       ;; advanced).
       (when (and (advancep)
