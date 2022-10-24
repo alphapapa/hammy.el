@@ -373,9 +373,7 @@ interval with completion)."
                        :interval (cl-typecase current-prefix-arg
                                    (null nil)
                                    (list (hammy-complete-interval hammy :prompt "Start with interval: "))))))
-  (unless (and (= 0 (hammy-cycles hammy))
-               (null (hammy-history hammy))
-               (null (hammy-interval hammy)))
+  (when (hammy-interval hammy)
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
   (hammy-call (hammy-before hammy) hammy)
