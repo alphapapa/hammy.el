@@ -432,7 +432,6 @@ If QUIETLY, don't say so."
     (hammy--record-interval hammy)
     (run-hook-with-args 'hammy-stopped hammy)
     (hammy-call (hammy-stopped hammy) hammy)
-    (hammy-reset hammy)
     hammy))
 
 (cl-defun hammy-next (hammy &key duration advance interval)
