@@ -752,6 +752,9 @@ Summary includes elapsed times, etc."
         (progn
           (when hammy-mode-update-mode-line-continuously
             ;; TODO: Only run this timer when a hammy is running.
+            (when (timerp hammy-mode-update-mode-line-timer)
+              ;; Cancel any existing timer.  Generally shouldn't happen, but not impossible.
+              (cancel-timer hammy-mode-update-mode-line-timer))
             (setf hammy-mode-update-mode-line-timer (run-with-timer 1 1 #'hammy--mode-line-update)))
           (add-hook 'hammy-interval-hook #'hammy--mode-line-update)
           ;; Avoid adding the lighter multiple times if the mode is activated again.
