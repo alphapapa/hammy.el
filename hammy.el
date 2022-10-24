@@ -76,7 +76,7 @@ Called with one argument, the hammy.")
   (after nil :documentation "Function(s) called after timer has completed.
 Called with one argument, the hammy.  Called when the hammy's
 completion predicate returns non-nil.")
-  (stopping nil :documentation "Function(s) called after stopping timer.
+  (stopped nil :documentation "Function(s) called after stopping timer.
 Called with one argument, the hammy.  Called by `hammy-stop'.")
   (complete-p nil :documentation "Predicate that returns non-nil when hammy is complete.
 Called with one argument, the hammy.  Called after each interval
@@ -299,8 +299,8 @@ Define a hammy with `hammy-define'.")
 Called with the hammy."
   :type 'hook)
 
-(defcustom hammy-stop-hook '((lambda (hammy)
-                               (hammy-log hammy (hammy-summary hammy))))
+(defcustom hammy-stopped '((lambda (hammy)
+                             (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy is stopped.
 Called with the hammy."
   :type 'hook)
@@ -398,7 +398,7 @@ the task should be clocked in)."
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
       ;; FIXME: The user is clocked out when the interval "ends", but before the user advances it.
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
-      (pushfn #'hammy--org-clock-out (hammy-stopping hammy)))
+      (pushfn #'hammy--org-clock-out (hammy-stopped hammy)))
     hammy))
 
 (defun hammy-stop (hammy &optional quietly)
@@ -423,12 +423,12 @@ If QUIETLY, don't say so."
       (cancel-timer reminder)
       (setf (alist-get 'reminder (hammy-etc hammy)) nil))
     ;; Run the hook after having stopped the hammy, so any errors in
-    ;; stop-hook functions won't prevent the hammy from stopping
+    ;; stopped functions won't prevent the hammy from stopping
     ;; correctly; and do it before resetting the hammy, so functions
     ;; in the stop hook can access the hammy's data before resetting.
     (hammy--record-interval hammy)
-    (run-hook-with-args 'hammy-stop-hook hammy)
-    (hammy-call (hammy-stopping hammy) hammy)
+    (run-hook-with-args 'hammy-stopped hammy)
+    (hammy-call (hammy-stopped hammy) hammy)
     (hammy-reset hammy)
     hammy))
 
@@ -942,7 +942,7 @@ Summary includes elapsed times, etc."
                                   (notify "Break time is over!")
                                   (when hammy-sound-end-break
                                     (play-sound-file hammy-sound-end-break))))))
-  :stopping (do (setf (alist-get 'unused-break etc) nil)))
+  :stopped (do (setf (alist-get 'unused-break etc) nil)))
 
 ;;;; Footer
 
