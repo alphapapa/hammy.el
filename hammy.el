@@ -383,7 +383,7 @@ interval with completion)."
 
 ;;;###autoload
 (defun hammy-start-org-clock-in (&rest _ignore)
-  "Call `org-clock-in', then `hammy-start'.
+  "Call `org-clock-in' and start a hammy (or use an already-started one).
 The Org task will then automatically be clocked out during the
 hammy's second interval (and when the hammy is stopped), and back
 in when the first interval resumes.
@@ -393,13 +393,15 @@ first interval is the work interval (i.e. the one during which
 the task should be clocked in)."
   (interactive)
   (call-interactively #'org-clock-in)
-  (let ((hammy (call-interactively #'hammy-start)))
+  (let ((hammy (hammy-complete "Clock in with Hammy: " hammy-hammys)))
     (cl-macrolet ((pushfn (fn place)
                           `(cl-pushnew ,fn ,place :test #'equal)))
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
       ;; FIXME: The user is clocked out when the interval "ends", but before the user advances it.
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-stopped hammy)))
+    (unless (hammy-interval hammy)
+      (hammy-start hammy))
     hammy))
 
 (defun hammy-stop (hammy &optional quietly)
