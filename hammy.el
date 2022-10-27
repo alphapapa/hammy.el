@@ -110,23 +110,77 @@ advance until the user calls `hammy-next'."))
 (defmacro hammy-define (name &rest args)
   "Define a new Hammy named NAME made with ARGS.
 Returns the hammy, and adds hammy to `hammy-hammys'.  NAME is a
-string.  ARGS are passed to `make-hammy', which see.  Within
-ARGS, these pseudo-functions and forms available:
+string.  ARGS are passed to `make-hammy', which see.  Useful ones
+include:
+
+  `:documentation': An optional documentation string.
+
+  `:intervals': A list of intervals.  Each one is defined with
+    the local function `interval', which calls
+    `make-hammy-interval', which see for its arguments.
+
+  `:before': One or a list of functions which are called when the
+    interval begins.  See the `do' macro, documented later.
+
+  `:after': One or a list of functions which are called when the
+    interval ends.  See the `do' macro, documented later.
+
+  `:duration': A number of seconds, or a string passed to
+    `timer-duration' to return such, or a function which returns
+    such (called before starting the interval each cycle).  See
+    the `do' macro, documented later.
+
+  `:advance': Nil to advance automatically, or one or a list of
+    functions to call when the interval's timer has elapsed and
+    the user should be prompted to manually advance to the next
+    interval.  See the `do' and `remind' macros, documented
+    later.
+
+Within ARGS, these pseudo-functions and forms available:
 
   `announce (message)': Announce MESSAGE in the echo area.
   `notify (message)`: Send MESSAGE as a desktop notification.
+
+  `climb (from to &key descend step)': Return a function that
+    returns a duration gradually increasing from FROM to TO, and
+    optionally decreasing back to TO, by STEP.  FROM, TO, and
+    STEP may be numbers or strings (passed to `timer-duration',
+    which see).  DESCEND, if non-nil, causes the duration to
+    gradually decrease back to FROM after reaching TO.
+
+  `duration (interval)': Return a number of seconds equivalent to
+    INTERVAL (a string like \"10 minutes\").  Calls
+    `timer-duration', which see.
 
   `do (&rest body)': Expands to a lambda that binds `hammy' to
     the current hammy and evaluates BODY.  Within its BODY, these
     forms are bound:
 
-    `cycles': The number of cycles the hammy has completed.
     `current-duration': The duration in seconds of the current interval.
+    `current-interval-start-time': The time at which the current interval began.
+    `cycles': The number of cycles the hammy has completed.
+    `etc': The hammy's `etc' slot.
+    `history': The hammy's history list.
     `interval': The current interval (a `hammy-interval' struct).
-    `interval-name': The name of the current interval."
+    `interval-name': The name of the current interval.
+
+  `elapsed (&optional interval)': Calls `hammy-elapsed' with the
+    hammy, which see.
+
+  `interval (&rest args)': Calls `make-hammy-interval', which
+    see.
+
+  `num-intervals ()': Returns the hammy's number of intervals.
+
+  `remind (delay &rest fns)': Return a function that is called
+    every DELAY seconds until the interval is manually advanced,
+    calling FNS each time.  (The function automatically makes
+    necessary adjustments to the hammy to set and cancel the
+    periodic reminders.)
+
+  `run (command)': Runs COMMAND (a string) asynchronously with
+    `make-process', discarding its output and return value."
   (declare (indent defun))
-  ;; FIXME: Docstring.
-  
   ;; In some ways, it might be preferable for this macro to expand to
   ;; the hammy struct, but then it wouldn't be forward-compatible if
   ;; the structure changes, so we just expand to the code that makes
