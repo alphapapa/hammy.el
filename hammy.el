@@ -397,7 +397,6 @@ the task should be clocked in)."
     (cl-macrolet ((pushfn (fn place)
                           `(cl-pushnew ,fn ,place :test #'equal)))
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
-      ;; FIXME: The user is clocked out when the interval "ends", but before the user advances it.
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-stopped hammy)))
     (unless (hammy-interval hammy)
