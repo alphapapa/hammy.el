@@ -247,7 +247,6 @@ Within ARGS, these pseudo-functions and forms available:
                  (cycles (hammy)
                          (hammy-cycles hammy))
                  (climb (from to &key descend step)
-                        ;; FIXME: Make arguments optional.
                         (lambda (hammy)
                           (let* ((from (duration from))
                                  (to (duration to))
@@ -521,8 +520,8 @@ prompt for the interval with completion)."
                                   (1- (ring-length (hammy-intervals hammy))))))
         ;; Cycle completed.
         (cl-incf (hammy-cycles hammy))
-        ;; FIXME: Not sure if it makes sense to run the cycle hook
-        ;; here or later, after running other hooks.
+        ;; TODO: Not sure if it makes sense to run the cycle hook here
+        ;; or later, after running other hooks.
         (run-hook-with-args 'hammy-cycle-hook hammy)))
     (if (and (advancep)
              (hammy-complete-p hammy)
