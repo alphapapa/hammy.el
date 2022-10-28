@@ -434,18 +434,31 @@ interval with completion)."
   (push hammy hammy-active)
   hammy)
 
+(declare-function org-before-first-heading-p "org")
 ;;;###autoload
 (defun hammy-start-org-clock-in (&rest _ignore)
   "Call `org-clock-in' and start a hammy (or use an already-started one).
-The Org task will then automatically be clocked out during the
-hammy's second interval (and when the hammy is stopped), and back
-in when the first interval resumes.
+If point is in an Org entry, clock into it; otherwise, offer a
+list of recently clocked tasks to clock into.  The Org task will
+then automatically be clocked out during the hammy's second
+interval (and when the hammy is stopped), and back in when the
+first interval resumes.  (If the user clocks into a different
+task while the hammy is running, the task that is clocked-in when
+the work interval ends will be clocked back into when the next
+work interval begins.)
 
 Returns the hammy from `hammy-start'.  Assumes that the hammy's
 first interval is the work interval (i.e. the one during which
 the task should be clocked in)."
   (interactive)
-  (call-interactively #'org-clock-in)
+  (require 'org)
+  ;; MAYBE: Take a point-or-marker argument for the task to clock into.
+  (if (and (eq major-mode 'org-mode)
+           (not (org-before-first-heading-p)))
+      ;; At an Org entry: clock in to heading at point.
+      (org-clock-in)
+    ;; Not in an Org entry: offer a list to choose from.
+    (org-clock-in '(4)))
   (let ((hammy (hammy-complete "Clock in with Hammy: " hammy-hammys)))
     (cl-macrolet ((pushfn (fn place)
                           `(cl-pushnew ,fn ,place :test #'equal)))
