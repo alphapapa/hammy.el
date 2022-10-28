@@ -16,6 +16,7 @@ Hammy provides programmable, interactive interval timers for Emacs.  They can be
 - [[#usage][Usage]]
   - [[#examples][Examples]]
   - [[#tips][Tips]]
+- [[#changelog][Changelog]]
 - [[#faq][FAQ]]
 :END:
 
@@ -276,6 +277,15 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
       ;; Show `global-mode-string' in the tab bar.
       (setf tab-bar-format (append tab-bar-format '(tab-bar-format-align-right tab-bar-format-global)))))
 #+end_src
+
+* Changelog
+:PROPERTIES:
+:TOC:      :ignore (descendants)
+:END:
+
+** 0.1
+
+First tagged version.
 
 * FAQ
 
