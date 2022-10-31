@@ -356,6 +356,7 @@ Called with the hammy."
   :type 'hook)
 
 (defcustom hammy-stopped '((lambda (hammy)
+                             (hammy-log hammy "Stopped.")
                              (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy is stopped.
 Called with the hammy."
