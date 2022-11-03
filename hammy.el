@@ -461,13 +461,13 @@ the task should be clocked in)."
     ;; Not in an Org entry: offer a list to choose from.
     (org-clock-in '(4)))
   (let ((hammy (hammy-complete "Clock in with Hammy: " hammy-hammys)))
+    (unless (hammy-interval hammy)
+      (hammy-start hammy))
     (cl-macrolet ((pushfn (fn place)
                           `(cl-pushnew ,fn ,place :test #'equal)))
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-stopped hammy)))
-    (unless (hammy-interval hammy)
-      (hammy-start hammy))
     hammy))
 
 (defun hammy-stop (hammy &optional quietly)

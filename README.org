@@ -288,6 +288,9 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 *Changes*
 + Log "Stopped" when a hammy is stopped.
 
+*Fixes*
++ Command ~hammy-start-org-clock-in~ when a hammy is not yet running.
+
 ** 0.1
 
 First tagged version.
