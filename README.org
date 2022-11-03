@@ -283,7 +283,7 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 :TOC:      :ignore (descendants)
 :END:
 
-** 0.2-pre
+** 0.2
 
 *Changes*
 + Log "Stopped" when a hammy is stopped.
