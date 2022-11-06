@@ -395,22 +395,22 @@ Called with the hammy, and optionally a message."
   "Adjust HAMMY's interval durations."
   (interactive (list (hammy-complete "Adjust hammy: " hammy-hammys)))
   ;; TODO: Reset durations in `hammy-reset'.
-  (cl-labels ((adjust-interval (interval)
-                               (cl-symbol-macrolet ((original-duration
-                                                     (alist-get interval (alist-get 'original-durations (hammy-etc hammy)))))
-                                 (let* ((old-duration (hammy-interval-duration interval))
-                                        (new-duration (read-string (format "New duration (number or function) for interval %S: "
-                                                                           (hammy-interval-name interval))
-                                                                   nil nil (prin1-to-string old-duration))))
-                                   (unless (string-empty-p new-duration)
-                                     ;; TODO: Allow the user to type, e.g. "25 minutes" without enclosing quotes.
-                                     (setf new-duration (car (read-from-string new-duration))))
-                                   (when new-duration
-                                     (cl-check-type new-duration (or number function string))
-                                     (unless original-duration
-                                       ;; Only save the original duration the first time the interval is adjusted.
-                                       (setf original-duration old-duration))
-                                     (setf (hammy-interval-duration interval) new-duration))))))
+  (cl-labels ((adjust-interval
+               (interval) (cl-symbol-macrolet ((original-duration
+                                                (alist-get interval (alist-get 'original-durations (hammy-etc hammy)))))
+                            (let* ((old-duration (hammy-interval-duration interval))
+                                   (input-duration (read-string (format "New duration (number, function, or quoted-string duration) for interval \"%s\": "
+                                                                        (hammy-interval-name interval))
+                                                                nil nil (prin1-to-string old-duration)))
+                                   (new-duration (unless (string-empty-p input-duration)
+                                                   ;; TODO: Allow the user to type, e.g. "25 minutes" without enclosing quotes.
+                                                   (car (read-from-string input-duration)))))
+                              (when new-duration
+                                (cl-check-type new-duration (or number function string))
+                                (unless original-duration
+                                  ;; Only save the original duration the first time the interval is adjusted.
+                                  (setf original-duration old-duration))
+                                (setf (hammy-interval-duration interval) new-duration))))))
     (mapc #'adjust-interval (ring-elements (hammy-intervals hammy)))))
 
 ;;;###autoload
