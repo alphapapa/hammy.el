@@ -497,7 +497,8 @@ If QUIETLY, don't say so."
     (hammy--record-interval hammy)
     (run-hook-with-args 'hammy-stopped hammy)
     (hammy-call (hammy-stopped hammy) hammy)
-    (setf hammy-active (remove hammy hammy-active))
+    (setf (hammy-interval hammy) nil
+          hammy-active (remove hammy hammy-active))
     hammy))
 
 (cl-defun hammy-next (hammy &key duration advance interval)

@@ -285,7 +285,8 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 
 ** 0.2.1-pre
 
-Nothing new yet.
+*Fixes*
++ Command ~hammy-stop~ unsets the hammy's current interval.
 
 ** 0.2
 
