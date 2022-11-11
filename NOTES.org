@@ -100,3 +100,7 @@ It would be helpful to be able to integrate clocking Org tasks, but how?  Some i
    - Probably the least flexible option.
 
 [2022-08-29 Mon 20:41]  Thinking about it further, this isn't quite as flexible as it should be.  For example, if the user calls this command to clock in to an Org task and start a hammy, and then clocks into a different task before the hammy ends, when the hammy clocks back in at the start of the next word period, it would clock back in to the first task rather than the one the user was clocked in to when the work period ended.  So it probably needs to record the active task when the work period ends rather than when the work period begins.
+
+** TODO Clocks out work if first interval is rest                      :bug:
+
+[2022-11-10 Thu 20:40] Noticed an annoying bug: if I use ~hammy-start-org-clock-in~ on a hammy that starts with a rest interval, it will clock in during the rest interval and then clock out during the work interval, leaving all of the work time unclocked!  Not sure of how to fix this reliably.  Maybe a way to canonically mark an interval as the work/rest interval?
