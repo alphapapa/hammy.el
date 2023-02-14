@@ -319,6 +319,14 @@ Within ARGS, these pseudo-functions and forms available:
          (push hammy hammy-hammys)
          hammy))))
 
+(defmacro hammy-with-demoted-errors (format &rest body)
+  "Like `with-demoted-errors', but FORMAT may also be a form."
+  (declare (debug t) (indent defun))
+  (let ((err (make-symbol "err")))
+    `(condition-case-unless-debug ,err
+         ,(macroexp-progn body)
+       (error (message ,format ,err) nil))))
+
 (defun hammy-call (fn-or-fns &rest args)
   "Call FN-OR-FNS with ARGS.
 If FN-OR-FNS is a function, call it; if a list of functions, call
@@ -371,12 +379,14 @@ manually interrupted).  Called with the hammy, and optionally a
 message."
   :type 'hook)
 
-(defcustom hammy-interval-hook '((lambda (hammy &optional message) (hammy-log hammy message)))
+(defcustom hammy-interval-hook '((lambda (hammy &optional message) (hammy-log hammy message))
+                                 (lambda (hammy &optional _message) (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy completes an interval.
 Called with the hammy, and optionally a message."
   :type 'hook)
 
-(defcustom hammy-cycle-hook '((lambda (hammy) (hammy-log hammy "Cycled.")))
+(defcustom hammy-cycle-hook '((lambda (hammy) (hammy-log hammy "Cycled."))
+                              (lambda (hammy &optional _message) (hammy-log hammy (hammy-summary hammy))))
   "Functions run when a hammy completes a cycle.
 Called with the hammy, and optionally a message."
   :type 'hook)
@@ -429,8 +439,10 @@ interval with completion)."
                                    (list (hammy-complete-interval hammy :prompt "Start with interval: "))))))
   (when (hammy-interval hammy)
     (user-error "Hammy already started: %s" (hammy-format hammy)))
-  (run-hook-with-args 'hammy-start-hook hammy)
-  (hammy-call (hammy-before hammy) hammy)
+  (hammy-with-demoted-errors (hammy-format hammy "Error in start hook: %S")
+    (run-hook-with-args 'hammy-start-hook hammy))
+  (hammy-with-demoted-errors (hammy-format hammy "Error in before functions: %S")
+    (hammy-call (hammy-before hammy) hammy))
   (hammy-next hammy :duration duration :advance t :interval interval)
   (push hammy hammy-active)
   hammy)
@@ -495,8 +507,10 @@ If QUIETLY, don't say so."
     ;; correctly; and do it before resetting the hammy, so functions
     ;; in the stop hook can access the hammy's data before resetting.
     (hammy--record-interval hammy)
-    (run-hook-with-args 'hammy-stopped hammy)
-    (hammy-call (hammy-stopped hammy) hammy)
+    (hammy-with-demoted-errors (hammy-format hammy "Error in stopped hook: %S")
+      (run-hook-with-args 'hammy-stopped hammy))
+    (hammy-with-demoted-errors (hammy-format hammy "Error in stopped functions: %S")
+      (hammy-call (hammy-stopped hammy) hammy))
     (setf (hammy-interval hammy) nil
           hammy-active (remove hammy hammy-active))
     hammy))
@@ -537,15 +551,18 @@ prompt for the interval with completion)."
         (cl-incf (hammy-cycles hammy))
         ;; TODO: Not sure if it makes sense to run the cycle hook here
         ;; or later, after running other hooks.
-        (run-hook-with-args 'hammy-cycle-hook hammy)))
+        (hammy-with-demoted-errors (hammy-format hammy "Error in cycle hook: %S")
+          (run-hook-with-args 'hammy-cycle-hook hammy))))
     (if (and (advancep)
              (hammy-complete-p hammy)
              (funcall (hammy-complete-p hammy) hammy))
         ;; Hammy complete.
         (progn
           (hammy-stop hammy 'quietly)
-          (run-hook-with-args 'hammy-complete-hook hammy)
-          (hammy-call (hammy-after hammy) hammy))
+          (hammy-with-demoted-errors (hammy-format hammy "Error in complete hook: %S")
+            (run-hook-with-args 'hammy-complete-hook hammy))
+          (hammy-with-demoted-errors (hammy-format hammy "Error in after functions: %S")
+            (hammy-call (hammy-after hammy) hammy)))
       ;; Hammy not complete: start next interval.
       (pcase-let* (((cl-struct hammy (interval current-interval)) hammy)
                    (next-interval (or interval
@@ -560,7 +577,8 @@ prompt for the interval with completion)."
                                             (function (condition-case _err
                                                           (funcall (hammy-interval-duration next-interval) hammy)
                                                         (hammy-complete
-                                                         (run-hook-with-args 'hammy-complete-hook hammy)
+                                                         (hammy-with-demoted-errors (hammy-format hammy "Error in complete hook: %S")
+                                                           (run-hook-with-args 'hammy-complete-hook hammy))
                                                          (message "Hammy is over!  (%s)" (hammy-name hammy))
                                                          nil)))
                                             ((or number string) (hammy-interval-duration next-interval)))
@@ -569,9 +587,11 @@ prompt for the interval with completion)."
         (if (not (advancep))
             ;; Interval requires manual advancing.
             (progn
-              (hammy-log hammy "Waiting for user to advance...")
+              (hammy-log hammy (format "Waiting for user to advance (to %s)..."
+                                       (hammy-interval-name next-interval)))
               (setf (hammy-overduep hammy) t)
-              (hammy-call (hammy-interval-advance (hammy-interval hammy)) hammy))
+              (hammy-with-demoted-errors (hammy-format hammy "Error in  interval-advance functions: %S")
+                (hammy-call (hammy-interval-advance (hammy-interval hammy)) hammy)))
           ;; Automatically advancing, manually advancing, or starting the hammy.
           (when (hammy-interval hammy)
             ;; Advancing to the next interval (rather than starting the hammy).
@@ -579,22 +599,26 @@ prompt for the interval with completion)."
             ;; functions when actually advancing to the next interval.
             (hammy--record-interval hammy)
             (hammy-log hammy (format "Elapsed: %s" (hammy-format-current-times hammy)))
-            (run-hook-with-args 'hammy-interval-hook hammy
-                                (format "Interval ended: %s"
-                                        (hammy-interval-name (hammy-interval hammy))))
-            (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy))
+            (hammy-with-demoted-errors (hammy-format hammy "Error in interval hook: %S")
+              (run-hook-with-args 'hammy-interval-hook hammy
+                                  (format "Interval ended: %s"
+                                          (hammy-interval-name (hammy-interval hammy)))))
+            (hammy-with-demoted-errors (hammy-format hammy "Error in interval-after functions: %S")
+              (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy)))
           (setf (hammy-interval hammy) next-interval
                 (hammy-current-interval-start-time hammy) (current-time)
                 (hammy-current-duration hammy) next-duration
                 (hammy-overduep hammy) nil)
           (when next-duration
             ;; Starting next interval.
-            (hammy-call (hammy-interval-before next-interval) hammy)
+            (hammy-with-demoted-errors (hammy-format hammy "Error in interval-before functions: %S")
+              (hammy-call (hammy-interval-before next-interval) hammy))
             ;; TODO: Mention elapsed time of just-completed interval.
-            (run-hook-with-args 'hammy-interval-hook hammy
-                                (format "Interval started: %s (%s)"
-                                        (hammy-interval-name (hammy-interval hammy))
-                                        (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
+            (hammy-with-demoted-errors (hammy-format hammy "Error in interval hook: %S")
+              (run-hook-with-args 'hammy-interval-hook hammy
+                                  (format "Interval started: %s (%s)"
+                                          (hammy-interval-name (hammy-interval hammy))
+                                          (ts-human-format-duration (hammy-current-duration hammy) 'abbr))))
             (setf (hammy-timer hammy) (run-at-time next-duration nil #'hammy-next hammy)))))))
   hammy)
 
@@ -648,7 +672,7 @@ PROMPT may be specified."
 (defun hammy-format (hammy &optional message)
   "Return formatted status for HAMMY, optionally with MESSAGE."
   (let* ((interval (cond ((hammy-interval hammy)
-                          (format "%s (%s)"
+                          (format "%s(%3s)"
                                   (hammy-interval-name (hammy-interval hammy))
                                   (ts-human-format-duration (hammy-current-duration hammy) 'abbr)))
                          ((and (hammy-complete-p hammy)
@@ -656,11 +680,10 @@ PROMPT may be specified."
                           "Completed.")
                          (t
                           "None")))
-         (message (if message (format "  Message:%S" message) "")))
-    (format "Hammy (%s): Interval:%s  Cycles:%s%s"
+         (message (if message (format "Message:%S" message) "")))
+    (format "Hammy:%s  Interval:%s  %s"
             (hammy-name hammy)
             interval
-            (hammy-cycles hammy)
             message)))
 
 (defun hammy-log (hammy &optional message)
