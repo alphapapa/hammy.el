@@ -285,7 +285,8 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 
 ** 0.3-pre
 
-Nothing new yet.
+*Changes*
++ Add 10-minute reminders to default pomodoro timer.
 
 ** 0.2.1
 
