@@ -876,6 +876,15 @@ Summary includes elapsed times, etc."
                     (concat ":" hammy-mode-lighter-suffix-inactive))
                 " ")))))
 
+(defun hammy-status ()
+  "Show the status of any active hammys in the echo area."
+  (interactive)
+  (message "%s"
+           (mapconcat (lambda (hammy)
+                        (concat (hammy-format hammy)
+                                "  Elapsed:" (hammy-format-current-times hammy) ""))
+                      hammy-active "\n")))
+
 (defun hammy--mode-line-update (&rest _ignore)
   "Force updating of all mode lines when a hammy is active."
   (when hammy-active
