@@ -559,21 +559,7 @@ prompt for the interval with completion)."
                                       (if current-interval
                                           (ring-next (hammy-intervals hammy) current-interval)
                                         (ring-ref (hammy-intervals hammy) 0))))
-                   (next-duration
-                    (or duration
-                        ;; This seems a bit awkward, but we want to allow the value to be a
-                        ;; number, a string, or a function that returns a number or string.
-                        (pcase-exhaustive
-                            (cl-etypecase (hammy-interval-duration next-interval)
-                              (function (condition-case _err
-                                            (funcall (hammy-interval-duration next-interval) hammy)
-                                          (hammy-complete
-                                           (run-hook-with-args 'hammy-complete-hook hammy)
-                                           (message "Hammy is over!  (%s)" (hammy-name hammy))
-                                           nil)))
-                              ((or number string) (hammy-interval-duration next-interval)))
-                          ((and (pred numberp) it) it)
-                          ((and (pred stringp) it) (timer-duration it))))))
+                   (next-duration))
         (if (not (advancep))
             ;; Interval requires manual advancing.
             (progn
@@ -593,6 +579,21 @@ prompt for the interval with completion)."
             (hammy-call (hammy-interval-after (hammy-interval hammy)) hammy))
           (setf (hammy-interval hammy) next-interval
                 (hammy-current-interval-start-time hammy) (current-time)
+                ;; We calculate the next duration after recording the
+                ;; previous interval so, e.g. the ⅓-time hammy can
+                ;; refer to its duration.
+                next-duration (or duration
+                                  (pcase-exhaustive
+                                      (cl-etypecase (hammy-interval-duration next-interval)
+                                        (function (condition-case _err
+                                                      (funcall (hammy-interval-duration next-interval) hammy)
+                                                    (hammy-complete
+                                                     (run-hook-with-args 'hammy-complete-hook hammy)
+                                                     (message "Hammy is over!  (%s)" (hammy-name hammy))
+                                                     nil)))
+                                        ((or number string) (hammy-interval-duration next-interval)))
+                                    ((and (pred numberp) it) it)
+                                    ((and (pred stringp) it) (timer-duration it))))
                 (hammy-current-duration hammy) next-duration
                 (hammy-overduep hammy) nil)
           (when next-duration
