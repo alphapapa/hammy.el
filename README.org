@@ -1,6 +1,3 @@
-:PROPERTIES:
-:TOC:      :include all :force (nothing) :ignore (nothing) :local (nothing)
-:END:
 #+TITLE: Hammy.el
 
 #+HTML: <img src="images/mascot.png" align="right">
@@ -9,13 +6,11 @@ Hammy provides programmable, interactive interval timers for Emacs.  They can be
 
 * Contents
 :PROPERTIES:
-:TOC:      :include all :ignore this
+:TOC:      :include siblings :ignore this
 :END:
 :CONTENTS:
 - [[#installation][Installation]]
 - [[#usage][Usage]]
-  - [[#examples][Examples]]
-  - [[#tips][Tips]]
 - [[#changelog][Changelog]]
 - [[#faq][FAQ]]
 :END:
@@ -37,6 +32,12 @@ Other than that, the recommended way to install it is to use [[https://github.co
 * Usage
 :PROPERTIES:
 :ID:       fae3cf22-c6d7-4d60-95b7-f3d30941959f
+:TOC:      :include descendants :ignore (descendants) 
+:END:
+
+:CONTENTS:
+- [[#examples][Examples]]
+- [[#tips][Tips]]
 :END:
 
 First, define a hammy timer using the domain-specific language Hammy offers for this purpose.  (The ones in the following examples are defined by default, so you can use them upon installation of the package.)
