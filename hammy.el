@@ -5,7 +5,7 @@
 ;; Author: Adam Porter <adam@alphapapa.net>
 ;; URL: https://github.com/alphapapa/hammy.el
 ;; Version: 0.3-pre
-;; Package-Requires: ((emacs "28.1") (ts "0.2.2"))
+;; Package-Requires: ((emacs "28.1") (svg-lib "0.2.5") (ts "0.2.2"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -54,6 +54,7 @@
   ;; For `org-with-point-at'.
   (require 'org-macs))
 
+(require 'svg-lib)
 (require 'ts)
 
 ;;;; Structs
@@ -801,6 +802,10 @@ Summary includes elapsed times, etc."
   "Shown when no hammys are running."
   :type 'string)
 
+(defcustom hammy-mode-lighter-pie t
+  "Show progress pie in the lighter."
+  :type 'boolean)
+
 (defcustom hammy-mode-update-mode-line-continuously t
   "Update the mode line every second while a hammy is running."
   :type 'boolean)
@@ -816,6 +821,26 @@ Summary includes elapsed times, etc."
 
 (defvar hammy-mode-update-mode-line-timer nil
   "Timer used to update the mode line.")
+
+(defface hammy-mode-lighter-pie '((t (:inherit mode-line)))
+  "Hammy progress pies.
+If showing progress in the mode line or tab bar, inherit from the
+appropriate face to ensure proper appearance.")
+
+(defface hammy-mode-lighter-pie-normal '((t (:inherit hammy-mode-lighter-pie)))
+  "Hammy with > 50% remaining.")
+
+(defface hammy-mode-lighter-pie-50 '((t (:inherit hammy-mode-lighter-pie)))
+  "Hammy with <= 50% remaining.")
+
+(defface hammy-mode-lighter-pie-25 '((t (:inherit font-lock-variable-name-face)))
+  "Hammy with <= 25% remaining.")
+
+(defface hammy-mode-lighter-pie-10 '((t (:inherit  font-lock-warning-face)))
+  "Hammy with <= 10% remaining.")
+
+(defface hammy-mode-lighter-pie-0 '((t (:inherit error)))
+  "Hammy that is overdue.")
 
 ;;;###autoload
 (define-minor-mode hammy-mode
@@ -859,7 +884,9 @@ Summary includes elapsed times, etc."
                      "")
                    (propertize (hammy-interval-name (hammy-interval hammy))
                                'face (hammy-interval-face (hammy-interval hammy)))
-                   (concat (if (hammy-overduep hammy)
+                   (concat (when hammy-mode-lighter-pie
+                             (propertize " " 'display (hammy--pie hammy)))
+                           (if (hammy-overduep hammy)
                                ;; We use the negative sign when counting down to
                                ;; the end of an interval (i.e. "T-minus...") .
                                "+" "-")
@@ -890,6 +917,22 @@ Summary includes elapsed times, etc."
   "Force updating of all mode lines when a hammy is active."
   (when hammy-active
     (force-mode-line-update 'all)))
+
+(defun hammy--pie (hammy)
+  "Return an SVG progress pie for HAMMY.
+Suitable for inserting with `insert-image'."
+  (let* ((elapsed (float-time (time-subtract (current-time) (hammy-current-interval-start-time hammy))))
+         (remaining (- (hammy-current-duration hammy) elapsed))
+         (fraction (/ remaining (hammy-current-duration hammy)))
+         (face (pcase fraction
+                 ((pred (> 0)) 'hammy-pie-0)
+                 ((pred (> 0.10)) 'hammy-pie-10)
+                 ((pred (> 0.25)) 'hammy-pie-25)
+                 ((pred (> 0.50)) 'hammy-pie-50)
+                 (_ 'hammy-pie-normal))))
+    (svg-lib-progress-pie fraction nil :height 1.0
+                          :background (face-attribute 'hammy-pie :background nil t)
+                          :foreground (face-attribute face :foreground nil t))))
 
 ;;;; Log buffer
 
