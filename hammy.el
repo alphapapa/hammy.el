@@ -929,7 +929,10 @@ Suitable for inserting with `insert-image'."
                  ((pred (> 0.10)) 'hammy-pie-10)
                  ((pred (> 0.25)) 'hammy-pie-25)
                  ((pred (> 0.50)) 'hammy-pie-50)
-                 (_ 'hammy-pie-normal))))
+                 (_ 'hammy-pie-normal)))
+         ;; After choosing face, take the absolute value of the fraction
+         ;; so it will fill up again as it becomes further overdue.
+         (fraction (abs fraction)))
     (svg-lib-progress-pie fraction nil :height 1.0
                           :background (face-attribute 'hammy-pie :background nil t)
                           :foreground (face-attribute face :foreground nil t))))
