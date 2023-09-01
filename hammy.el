@@ -989,11 +989,10 @@ Suitable for inserting with `insert-image'."
                  ((pred (< 0.25)) 'hammy-mode-lighter-pie-50)
                  ((pred (< 0.10)) 'hammy-mode-lighter-pie-25)
                  ((pred (< 0.00)) 'hammy-mode-lighter-pie-10)
-                 (_ 'hammy-mode-lighter-pie-0)))
-         ;; After choosing face, take the absolute value of the fraction
-         ;; so it will fill up again as it becomes further overdue.
-         (fraction (abs fraction)))
-    (svg-lib-progress-pie fraction nil :height 1.0
+                 (_ 'hammy-mode-lighter-pie-0))))
+    ;; After choosing face, pass the absolute value of the fraction so
+    ;; it will fill up again as it becomes further overdue.
+    (svg-lib-progress-pie (abs fraction) nil :height 1.0
                           :background (face-attribute 'hammy-mode-lighter-pie :background nil t)
                           :foreground (face-attribute face :foreground nil t))))
 
