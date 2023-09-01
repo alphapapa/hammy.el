@@ -332,7 +332,7 @@ each of them; if nil, do nothing."
 
 ;;;; Inline functions
 
-(defsubst hammy--interval-elapsed (hammy)
+(defsubst hammy--current-interval-elapsed (hammy)
   "Return elapsed seconds in HAMMY's current interval."
   (float-time (time-subtract (current-time) (hammy-current-interval-start-time hammy))))
 
@@ -939,7 +939,7 @@ appropriate face to ensure proper appearance.")
       ((pie-place (alist-get 'pie (hammy-etc hammy)))
        (last-pie-elapsed-place (alist-get 'last-pie-elapsed (hammy-etc hammy))))
     (let* (pie
-           (elapsed (floor (hammy--interval-elapsed hammy)))
+           (elapsed (floor (hammy--current-interval-elapsed hammy)))
            (update-pie-p (or (and (not (equal elapsed last-pie-elapsed-place))
                                   (zerop (mod elapsed hammy-mode-lighter-pie-update-interval)))
                              (not (setf pie pie-place)))))
@@ -951,7 +951,7 @@ appropriate face to ensure proper appearance.")
 (defun hammy--make-pie (hammy)
   "Return an SVG progress pie for HAMMY.
 Suitable for inserting with `insert-image'."
-  (let* ((elapsed (hammy--interval-elapsed hammy))
+  (let* ((elapsed (hammy--current-interval-elapsed hammy))
          (remaining (- (hammy-current-duration hammy) elapsed))
          (fraction (/ remaining (hammy-current-duration hammy)))
          (face (pcase fraction
