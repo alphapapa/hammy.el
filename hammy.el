@@ -201,111 +201,111 @@ Within ARGS, these pseudo-functions and forms available:
   ;; which would likely be confusing to many users.  So, for now, at
   ;; least, it will be a macro.
   `(cl-macrolet ((announce (message)
-                           `(hammy-announce hammy ,message))
+                   `(hammy-announce hammy ,message))
                  (notify (message)
-                         `(hammy-notify hammy ,message))
+                   `(hammy-notify hammy ,message))
                  (cycles ()
-                         `(hammy-cycles hammy))
+                   `(hammy-cycles hammy))
                  (listify (place)
-                          `(unless (listp ,place)
-                             (setf ,place (list ,place))))
+                   `(unless (listp ,place)
+                      (setf ,place (list ,place))))
                  (listify-functions (place)
-                                    `(when (functionp ,place)
-                                       (setf ,place (list ,place))))
+                   `(when (functionp ,place)
+                      (setf ,place (list ,place))))
                  (do (&rest body)
-                     `(lambda (hammy)
-                        (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
-                                             (current-interval-start-time (hammy-current-interval-start-time hammy))
-                                             (cycles (hammy-cycles hammy))
-                                             (etc (hammy-etc hammy))
-                                             (history (hammy-history hammy))
-                                             (interval (hammy-interval hammy))
-                                             (interval-name (hammy-interval-name interval)))
-                          (ignore hammy)
-                          ,@body))))
+                   `(lambda (hammy)
+                      (cl-symbol-macrolet ((current-duration (hammy-current-duration hammy))
+                                           (current-interval-start-time (hammy-current-interval-start-time hammy))
+                                           (cycles (hammy-cycles hammy))
+                                           (etc (hammy-etc hammy))
+                                           (history (hammy-history hammy))
+                                           (interval (hammy-interval hammy))
+                                           (interval-name (hammy-interval-name interval)))
+                        (ignore hammy)
+                        ,@body))))
      ;; NOTE: Some of these functions are called at "hammy time" (I
      ;; know...), while others return lambdas to be called at hammy
      ;; time.
      (cl-labels ((run (command)
-                      ;; This makes it easier to run a shell command without
-                      ;; having to hack around `async-shell-command' to prevent
-                      ;; it from displaying an output buffer, or deal with
-                      ;; `call-process's awkward arguments.
-                      (let* ((command (split-string command))
-                             (name (format "hammy: Calling process %S" (car command))))
-                        (make-process :name name :command command :noquery t)))
+                   ;; This makes it easier to run a shell command without
+                   ;; having to hack around `async-shell-command' to prevent
+                   ;; it from displaying an output buffer, or deal with
+                   ;; `call-process's awkward arguments.
+                   (let* ((command (split-string command))
+                          (name (format "hammy: Calling process %S" (car command))))
+                     (make-process :name name :command command :noquery t)))
                  (duration (interval)
-                           (timer-duration interval) )
+                   (timer-duration interval) )
                  (interval (&rest args)
-                           (apply #'make-hammy-interval args))
+                   (apply #'make-hammy-interval args))
                  (elapsed (hammy &optional interval)
-                          "Call `hammy-elapsed', which see."
-                          (hammy-elapsed hammy interval))
+                   "Call `hammy-elapsed', which see."
+                   (hammy-elapsed hammy interval))
                  (num-intervals (hammy)
-                                (ring-length (hammy-intervals hammy)))
+                   (ring-length (hammy-intervals hammy)))
                  (history (hammy)
-                          (hammy-history hammy))
+                   (hammy-history hammy))
                  (cycles (hammy)
-                         (hammy-cycles hammy))
+                   (hammy-cycles hammy))
                  (climb (from to &key descend step)
-                        (lambda (hammy)
-                          (let* ((from (duration from))
-                                 (to (duration to))
-                                 (apex (/ to from))
-                                 (step (cl-typecase step
-                                         (string (duration step))
-                                         (number step)))
-                                 (duration (cl-labels
-                                               ((ascend
-                                                 () (min (* (pcase (cycles hammy)
-                                                              (0 1)
-                                                              (height (1+ height)))
-                                                            from)
-                                                         to))
-                                                (descend
-                                                 () (min (* (pcase (- (* 2 apex) (cycles hammy))
-                                                              (0 1)
-                                                              (height (1- height)))
-                                                            from)
-                                                         to)))
-                                             (if (< (cycles hammy) apex)
-                                                 ;; Spin up!
-                                                 (if step
-                                                     (+ from (* step (cycles hammy)))
-                                                   (ascend))
-                                               ;; Spin down...
-                                               (pcase-exhaustive descend
-                                                 (`nil (ascend))
-                                                 (`t (hammy-log hammy
-                                                                (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s  Step:%s"
-                                                                        (cycles hammy) apex from to step))
-                                                     (if step
-                                                         (+ from (* step (- (* 2 apex) (cycles hammy))))
-                                                       (descend))))))))
-                            duration)))
+                   (lambda (hammy)
+                     (let* ((from (duration from))
+                            (to (duration to))
+                            (apex (/ to from))
+                            (step (cl-typecase step
+                                    (string (duration step))
+                                    (number step)))
+                            (duration (cl-labels
+                                          ((ascend
+                                             () (min (* (pcase (cycles hammy)
+                                                          (0 1)
+                                                          (height (1+ height)))
+                                                        from)
+                                                     to))
+                                           (descend
+                                             () (min (* (pcase (- (* 2 apex) (cycles hammy))
+                                                          (0 1)
+                                                          (height (1- height)))
+                                                        from)
+                                                     to)))
+                                        (if (< (cycles hammy) apex)
+                                            ;; Spin up!
+                                            (if step
+                                                (+ from (* step (cycles hammy)))
+                                              (ascend))
+                                          ;; Spin down...
+                                          (pcase-exhaustive descend
+                                            (`nil (ascend))
+                                            (`t (hammy-log hammy
+                                                           (format "Descending... (Cycles:%s  Apex:%s  From:%s  To:%s  Step:%s"
+                                                                   (cycles hammy) apex from to step))
+                                                (if step
+                                                    (+ from (* step (- (* 2 apex) (cycles hammy))))
+                                                  (descend))))))))
+                       duration)))
                  (remind (delay &rest fns)
-                         (lambda (hammy)
-                           (listify (hammy-after hammy))
-                           (cl-pushnew #'cancel-reminder (hammy-after hammy))
-                           (dolist (fn fns)
-                             (funcall fn hammy))
-                           (let ((delay-secs (duration delay)))
-                             ;; TODO: Allow the duration to also be a function to return the reminder delay.
-                             (setf (alist-get 'reminder (hammy-etc hammy))
-                                   (run-with-timer delay-secs delay-secs
-                                                   (lambda (hammy)
-                                                     (dolist (fn fns)
-                                                       (funcall fn hammy)))
-                                                   hammy)))
-                           ;; TODO: Might need to cancel and restart
-                           ;; the reminder when a hammy is paused,
-                           ;; too.
-                           (listify (hammy-interval-after (hammy-interval hammy)))
-                           (cl-pushnew #'cancel-reminder (hammy-interval-after (hammy-interval hammy)))))
+                   (lambda (hammy)
+                     (listify (hammy-after hammy))
+                     (cl-pushnew #'cancel-reminder (hammy-after hammy))
+                     (dolist (fn fns)
+                       (funcall fn hammy))
+                     (let ((delay-secs (duration delay)))
+                       ;; TODO: Allow the duration to also be a function to return the reminder delay.
+                       (setf (alist-get 'reminder (hammy-etc hammy))
+                             (run-with-timer delay-secs delay-secs
+                                             (lambda (hammy)
+                                               (dolist (fn fns)
+                                                 (funcall fn hammy)))
+                                             hammy)))
+                     ;; TODO: Might need to cancel and restart
+                     ;; the reminder when a hammy is paused,
+                     ;; too.
+                     (listify (hammy-interval-after (hammy-interval hammy)))
+                     (cl-pushnew #'cancel-reminder (hammy-interval-after (hammy-interval hammy)))))
                  (cancel-reminder (hammy)
-                                  (when (alist-get 'reminder (hammy-etc hammy))
-                                    (cancel-timer (alist-get 'reminder (hammy-etc hammy)))
-                                    (setf (alist-get 'reminder (hammy-etc hammy)) nil))))
+                   (when (alist-get 'reminder (hammy-etc hammy))
+                     (cancel-timer (alist-get 'reminder (hammy-etc hammy)))
+                     (setf (alist-get 'reminder (hammy-etc hammy)) nil))))
        (let* ((hammy (make-hammy :name ,name ,@args))
               (ring (make-ring (length (hammy-intervals hammy)))))
          (dolist (interval (hammy-intervals hammy))
@@ -409,25 +409,25 @@ Called with the hammy, and optionally a message."
   ;; TODO: Reset durations in `hammy-reset'.
   (cl-labels
       ((adjust-interval (interval)
-        (cl-symbol-macrolet
-            ((original-duration
-              (alist-get interval (alist-get 'original-durations (hammy-etc hammy)))))
-          (let* ((old-duration (hammy-interval-duration interval))
-                 (input-duration
-                  (read-string
-                   (format "New duration (number, function, or quoted-string duration) for interval \"%s\": "
-                           (hammy-interval-name interval))
-                   nil nil (prin1-to-string old-duration)))
-                 (new-duration
-                  (unless (string-empty-p input-duration)
-                    ;; TODO: Allow the user to type, e.g. "25 minutes" without enclosing quotes.
-                    (car (read-from-string input-duration)))))
-            (when new-duration
-              (cl-check-type new-duration (or number function string))
-              (unless original-duration
-                ;; Only save the original duration the first time the interval is adjusted.
-                (setf original-duration old-duration))
-              (setf (hammy-interval-duration interval) new-duration))))))
+         (cl-symbol-macrolet
+             ((original-duration
+                (alist-get interval (alist-get 'original-durations (hammy-etc hammy)))))
+           (let* ((old-duration (hammy-interval-duration interval))
+                  (input-duration
+                   (read-string
+                    (format "New duration (number, function, or quoted-string duration) for interval \"%s\": "
+                            (hammy-interval-name interval))
+                    nil nil (prin1-to-string old-duration)))
+                  (new-duration
+                   (unless (string-empty-p input-duration)
+                     ;; TODO: Allow the user to type, e.g. "25 minutes" without enclosing quotes.
+                     (car (read-from-string input-duration)))))
+             (when new-duration
+               (cl-check-type new-duration (or number function string))
+               (unless original-duration
+                 ;; Only save the original duration the first time the interval is adjusted.
+                 (setf original-duration old-duration))
+               (setf (hammy-interval-duration interval) new-duration))))))
     (mapc #'adjust-interval (ring-elements (hammy-intervals hammy)))))
 
 ;;;###autoload
@@ -484,7 +484,7 @@ the task should be clocked in)."
     (unless (hammy-interval hammy)
       (hammy-start hammy))
     (cl-macrolet ((pushfn (fn place)
-                          `(cl-pushnew ,fn ,place :test #'equal)))
+                    `(cl-pushnew ,fn ,place :test #'equal)))
       (pushfn #'hammy--org-clock-in (hammy-interval-before (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-interval-after (hammy-interval hammy)))
       (pushfn #'hammy--org-clock-out (hammy-stopped hammy)))
@@ -761,9 +761,9 @@ cycles)."
 (defun hammy-complete (prompt hammys)
   "Return one of HAMMYS selected with completion and PROMPT."
   (cl-labels ((describe (hammy)
-                        (format "%s (%s)"
-                                (hammy-name hammy)
-                                (hammy-documentation hammy))))
+                (format "%s (%s)"
+                        (hammy-name hammy)
+                        (hammy-documentation hammy))))
     (pcase (length hammys)
       (0 nil)
       (1 (car hammys))
@@ -1110,16 +1110,16 @@ Suitable for inserting with `insert-image'."
              :before (do (announce "Starting work time (advance to break when ready).")
                          (notify "Starting work time (advance to break when ready)."))
              :advance (remind "10 minutes" 
-                        (do (let* ((current-duration
-                                    (ts-human-format-duration
-                                     (float-time
-                                      (time-subtract (current-time)
-                                                     current-interval-start-time))))
-                                   (message (format "You've worked for %s!" current-duration)))
-                                                 (announce message)
-                                                 (notify message)
-                                                 (when hammy-sound-end-work
-                                                   (play-sound-file hammy-sound-end-work))))))
+                              (do (let* ((current-duration
+                                          (ts-human-format-duration
+                                           (float-time
+                                            (time-subtract (current-time)
+                                                           current-interval-start-time))))
+                                         (message (format "You've worked for %s!" current-duration)))
+                                    (announce message)
+                                    (notify message)
+                                    (when hammy-sound-end-work
+                                      (play-sound-file hammy-sound-end-work))))))
    (interval :name "Break"
              :duration (do (pcase-let* ((`(,_interval ,start ,end) (car history))
                                         (work-seconds (float-time (time-subtract end start)))
