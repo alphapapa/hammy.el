@@ -336,6 +336,11 @@ each of them; if nil, do nothing."
   "Return elapsed seconds in HAMMY's current interval."
   (float-time (time-subtract (current-time) (hammy-current-interval-start-time hammy))))
 
+(defsubst hammy--current-interval-remaining (hammy)
+  "Return remaining seconds in HAMMY's current interval."
+  ;; TODO: Use this in more places, probably.
+  (- (hammy-current-duration hammy) (hammy--current-interval-elapsed hammy)))
+
 ;;;; Variables
 
 (defvar org-clock-hd-marker)
