@@ -812,6 +812,10 @@ Summary includes elapsed times, etc."
   "Show progress pie in the lighter."
   :type 'boolean)
 
+(defcustom hammy-mode-lighter-pie-update-interval 10
+  "Update a hammy's pie every this many seconds."
+  :type 'integer)
+
 (defcustom hammy-mode-update-mode-line-continuously t
   "Update the mode line every second while a hammy is running."
   :type 'boolean)
@@ -925,6 +929,26 @@ appropriate face to ensure proper appearance.")
     (force-mode-line-update 'all)))
 
 (defun hammy--pie (hammy)
+  "Return HAMMY's pie, updating it if necessary."
+  ;; This function is carefully designed and tested to not make more pie than
+  ;; necessary (because the mode line, header line, tab bar, etc. are updated
+  ;; more often than one would expect).  And the unusual construction is
+  ;; designed to minimize the number of times the pie-place is accessed (which
+  ;; requires type-checking the struct each time).
+  (cl-symbol-macrolet
+      ((pie-place (alist-get 'pie (hammy-etc hammy)))
+       (last-pie-elapsed-place (alist-get 'last-pie-elapsed (hammy-etc hammy))))
+    (let* (pie
+           (elapsed (floor (hammy--interval-elapsed hammy)))
+           (update-pie-p (or (and (not (equal elapsed last-pie-elapsed-place))
+                                  (zerop (mod elapsed hammy-mode-lighter-pie-update-interval)))
+                             (not (setf pie pie-place)))))
+      (when update-pie-p
+        (setf pie (setf last-pie-elapsed-place elapsed
+                        pie-place (hammy--make-pie hammy))))
+      pie)))
+
+(defun hammy--make-pie (hammy)
   "Return an SVG progress pie for HAMMY.
 Suitable for inserting with `insert-image'."
   (let* ((elapsed (hammy--interval-elapsed hammy))
