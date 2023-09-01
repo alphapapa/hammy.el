@@ -445,6 +445,8 @@ interval with completion)."
            :interval (cl-typecase current-prefix-arg
                        (null nil)
                        (list (hammy-complete-interval hammy :prompt "Start with interval: "))))))
+  (when (map-elt (hammy-etc hammy) 'pausedp)
+    (user-error "Hammy paused: %s  (Use `hammy-toggle' to resume.)" (hammy-format hammy)))
   (when (hammy-interval hammy)
     (user-error "Hammy already started: %s" (hammy-format hammy)))
   (run-hook-with-args 'hammy-start-hook hammy)
@@ -644,15 +646,38 @@ If already running, restarts it."
     hammy))
 
 (defun hammy-toggle (hammy)
-  "Toggle HAMMY timer.
-If paused, resume it.  If running, pause it."
-  (interactive (list (hammy-complete "Toggle hammy: " hammy-hammys)))
-  (if (hammy-timer hammy)
-      (let ((remaining-time (float-time (time-subtract (timer--time hammy) (current-time)))))
-        (setf (alist-get 'remaining-time (hammy-etc hammy)) remaining-time)
-        (hammy-stop hammy))
-    (hammy-start hammy (alist-get 'remaining-time (hammy-etc hammy)))
-    (setf (alist-get 'remaining-time (hammy-etc hammy)) nil))
+  "Toggle HAMMY.
+If running, pause it; if paused, resume it.
+
+Pausing records the current interval and remaining time and calls
+`hammy-stop'.  Resuming calls `hammy-start' with the recorded
+interval and remaining time."
+  (interactive
+   (list (hammy-complete "Toggle hammy: "
+                         (append (cl-remove-if-not (lambda (hammy)
+                                                     (map-elt (hammy-etc hammy) 'pausedp))
+                                                   hammy-hammys)
+                                 hammy-active))))
+  ;; Using `τ' as a prefix for place symbols ("τόπος" meaning "place").
+  (cl-symbol-macrolet ((τpausedp (map-elt (hammy-etc hammy) 'pausedp))
+                       (τlast-remaining (map-elt (hammy-etc hammy) 'last-remaining))
+                       (τlast-interval (map-elt (hammy-etc hammy) 'last-interval)))
+    (if (not τpausedp)
+        (let ((elapsed (hammy--current-interval-elapsed hammy))
+              (remaining (hammy--current-interval-remaining hammy))
+              (interval (hammy-interval hammy)))
+          (setf τpausedp t
+                τlast-remaining remaining
+                τlast-interval interval)
+          (hammy-stop hammy 'quietly)
+          (hammy-log hammy (format "Paused after %.0f seconds.  %.0f seconds remaining in interval %S."
+                                   elapsed remaining (hammy-interval-name interval))))
+      (let ((remaining τlast-remaining)
+            (interval τlast-interval))
+        (setf τpausedp nil
+              τlast-remaining nil
+              τlast-interval nil)
+        (hammy-start hammy :interval interval :duration remaining))))
   hammy)
 
 ;;;; Functions
