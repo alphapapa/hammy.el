@@ -330,6 +330,12 @@ each of them; if nil, do nothing."
     (list (dolist (fn fn-or-fns)
             (apply fn args)))))
 
+;;;; Inline functions
+
+(defsubst hammy--interval-elapsed (hammy)
+  "Return elapsed seconds in HAMMY's current interval."
+  (float-time (time-subtract (current-time) (hammy-current-interval-start-time hammy))))
+
 ;;;; Variables
 
 (defvar org-clock-hd-marker)
@@ -921,7 +927,7 @@ appropriate face to ensure proper appearance.")
 (defun hammy--pie (hammy)
   "Return an SVG progress pie for HAMMY.
 Suitable for inserting with `insert-image'."
-  (let* ((elapsed (float-time (time-subtract (current-time) (hammy-current-interval-start-time hammy))))
+  (let* ((elapsed (hammy--interval-elapsed hammy))
          (remaining (- (hammy-current-duration hammy) elapsed))
          (fraction (/ remaining (hammy-current-duration hammy)))
          (face (pcase fraction
