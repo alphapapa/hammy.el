@@ -925,16 +925,16 @@ Suitable for inserting with `insert-image'."
          (remaining (- (hammy-current-duration hammy) elapsed))
          (fraction (/ remaining (hammy-current-duration hammy)))
          (face (pcase fraction
-                 ((pred (> 0)) 'hammy-pie-0)
-                 ((pred (> 0.10)) 'hammy-pie-10)
-                 ((pred (> 0.25)) 'hammy-pie-25)
-                 ((pred (> 0.50)) 'hammy-pie-50)
-                 (_ 'hammy-pie-normal)))
+                 ((pred (> 0)) 'hammy-mode-lighter-pie-0)
+                 ((pred (> 0.10)) 'hammy-mode-lighter-pie-10)
+                 ((pred (> 0.25)) 'hammy-mode-lighter-pie-25)
+                 ((pred (> 0.50)) 'hammy-mode-lighter-pie-50)
+                 (_ 'hammy-mode-lighter-pie-normal)))
          ;; After choosing face, take the absolute value of the fraction
          ;; so it will fill up again as it becomes further overdue.
          (fraction (abs fraction)))
     (svg-lib-progress-pie fraction nil :height 1.0
-                          :background (face-attribute 'hammy-pie :background nil t)
+                          :background (face-attribute 'hammy-mode-lighter-pie :background nil t)
                           :foreground (face-attribute face :foreground nil t))))
 
 ;;;; Log buffer
