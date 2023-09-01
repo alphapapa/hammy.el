@@ -925,11 +925,11 @@ Suitable for inserting with `insert-image'."
          (remaining (- (hammy-current-duration hammy) elapsed))
          (fraction (/ remaining (hammy-current-duration hammy)))
          (face (pcase fraction
-                 ((pred (> 0)) 'hammy-mode-lighter-pie-0)
-                 ((pred (> 0.10)) 'hammy-mode-lighter-pie-10)
-                 ((pred (> 0.25)) 'hammy-mode-lighter-pie-25)
-                 ((pred (> 0.50)) 'hammy-mode-lighter-pie-50)
-                 (_ 'hammy-mode-lighter-pie-normal)))
+                 ((pred (< 0.50)) 'hammy-mode-lighter-pie-normal)
+                 ((pred (< 0.25)) 'hammy-mode-lighter-pie-50)
+                 ((pred (< 0.10)) 'hammy-mode-lighter-pie-25)
+                 ((pred (< 0.00)) 'hammy-mode-lighter-pie-10)
+                 (_ 'hammy-mode-lighter-pie-0)))
          ;; After choosing face, take the absolute value of the fraction
          ;; so it will fill up again as it becomes further overdue.
          (fraction (abs fraction)))
