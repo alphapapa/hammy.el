@@ -968,15 +968,15 @@ appropriate face to ensure proper appearance.")
   (cl-symbol-macrolet
       ((τpie (alist-get 'pie (hammy-etc hammy)))
        (τlast-pie-elapsed (alist-get 'last-pie-elapsed (hammy-etc hammy))))
-    (let* (pie
+    (let* (🥧
            (elapsed (floor (hammy--current-interval-elapsed hammy)))
            (update-pie-p (or (and (not (equal elapsed τlast-pie-elapsed))
                                   (zerop (mod elapsed hammy-mode-lighter-pie-update-interval)))
-                             (not (setf pie τpie)))))
+                             (not (setf 🥧 τpie)))))
       (when update-pie-p
-        (setf pie (setf τlast-pie-elapsed elapsed
-                        τpie (hammy--make-pie hammy))))
-      pie)))
+        (setf 🥧 (setf τlast-pie-elapsed elapsed
+                       τpie (hammy--make-pie hammy))))
+      🥧)))
 
 (defun hammy--make-pie (hammy)
   "Return an SVG progress pie for HAMMY.
