@@ -629,6 +629,7 @@ If already running, restarts it."
   (let ((runningp (hammy-timer hammy)))
     (when runningp
       (hammy-stop hammy 'quietly))
+    ;; TODO(someday): Use `with-slots', which supports structs in Emacs 29+.
     (setf (hammy-cycles hammy) 0
           (hammy-etc hammy) nil
           (hammy-history hammy) nil
