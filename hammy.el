@@ -393,6 +393,13 @@ Called with the hammy, and optionally a message."
 Called with the hammy, and optionally a message."
   :type 'hook)
 
+(defcustom hammy-mode-tick-hook nil
+  "Functions run while `hammy-mode' is active.
+Run approximately every one second (since Emacs timers aren't
+guaranteed to be run at precise times), with one argument, the
+list of active hammys (i.e. `hammy-active')."
+  :type 'hook)
+
 (defcustom hammy-sound-end-break nil
   "Play this sound when a break interval ends."
   :type '(choice file (const :tag "No sound" nil)))
@@ -860,8 +867,10 @@ Summary includes elapsed times, etc."
 (defface hammy-mode-lighter-overdue '((t (:inherit error)))
   "Used when no hammy is active.")
 
-(defvar hammy-mode-update-mode-line-timer nil
-  "Timer used to update the mode line.")
+(defvar hammy-mode-tick-timer nil
+  "Timer run every 1 second while `hammy-mode' is active.
+Used to call `hammy--tick', which runs functions in
+`hammy-mode-tick-hook'.")
 
 (defface hammy-mode-lighter-pie '((t (:inherit mode-line)))
   "Hammy progress pies.
@@ -890,21 +899,28 @@ appropriate face to ensure proper appearance.")
   (let ((lighter '(hammy-mode (:eval (hammy-mode-lighter)))))
     (if hammy-mode
         (progn
+          (when (timerp hammy-mode-tick-timer)
+            ;; Cancel any existing timer.  Generally shouldn't happen, but not impossible.
+            (cancel-timer hammy-mode-tick-timer))
+          ;; TODO: Only run this timer when a hammy is running.
+          (setf hammy-mode-tick-timer (run-with-timer 1 1 #'hammy--tick))
           (when hammy-mode-update-mode-line-continuously
-            ;; TODO: Only run this timer when a hammy is running.
-            (when (timerp hammy-mode-update-mode-line-timer)
-              ;; Cancel any existing timer.  Generally shouldn't happen, but not impossible.
-              (cancel-timer hammy-mode-update-mode-line-timer))
-            (setf hammy-mode-update-mode-line-timer (run-with-timer 1 1 #'hammy--mode-line-update)))
+            (add-hook 'hammy-mode-tick-hook #'hammy--mode-line-update))
           (add-hook 'hammy-interval-hook #'hammy--mode-line-update)
           ;; Avoid adding the lighter multiple times if the mode is activated again.
           (cl-pushnew lighter global-mode-string :test #'equal))
-      (when hammy-mode-update-mode-line-timer
-        (cancel-timer hammy-mode-update-mode-line-timer)
-        (setf hammy-mode-update-mode-line-timer nil))
+      (when (timerp hammy-mode-tick-timer)
+        (cancel-timer hammy-mode-tick-timer)
+        (setf hammy-mode-tick-timer nil))
+      (remove-hook 'hammy-mode-tick-hook #'hammy--tick)
       (remove-hook 'hammy-interval-hook #'hammy--mode-line-update)
       (setf global-mode-string
             (remove lighter global-mode-string)))))
+
+(defun hammy--tick (&rest _)
+  "Run `hammy-mode-tick-hook' with `hammy-active' as its argument.
+To be called from `hammy-mode-tick-timer'."
+  (run-hook-with-args 'hammy-mode-tick-hook hammy-active))
 
 (defun hammy-mode-lighter ()
   "Return the mode-line lighter for `hammy-mode'."
