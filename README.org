@@ -293,6 +293,9 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 *Changes*
 + Add 10-minute reminders to default pomodoro timer.
 
+*Fixes*
++ Listify hammys' ~stopped~ slot.  ([[https://github.com/alphapapa/hammy.el/issues/13][#13]].  Thanks to [[https://github.com/Rickyfs][Rickyfs]] for reporting.)
+
 ** 0.2.1
 
 *Fixes*

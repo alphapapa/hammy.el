@@ -315,6 +315,7 @@ Within ARGS, these pseudo-functions and forms available:
              (listify-functions (hammy-interval-after interval))
              (listify-functions (hammy-interval-advance interval)))
            (ring-insert-at-beginning ring interval))
+         (listify-functions (hammy-stopped hammy))
          (setf (hammy-intervals hammy) ring)
          (setf hammy-hammys (cl-delete ,name hammy-hammys :test #'equal :key #'hammy-name))
          (push hammy hammy-hammys)
