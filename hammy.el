@@ -402,6 +402,11 @@ Called with the hammy, and optionally a message."
   "Play this sound when a work interval ends."
   :type '(choice file (const :tag "No sound" nil)))
 
+(defcustom hammy-mode-lighter-seconds-format "%x%hh%mm%z"
+  "Format string passed to `format-seconds', which see.
+Used when remaining time is greater than one minute."
+  :type 'string)
+
 ;;;; Commands
 
 (defun hammy-adjust (hammy)
@@ -932,7 +937,9 @@ appropriate face to ensure proper appearance.")
                                ;; We use the negative sign when counting down to
                                ;; the end of an interval (i.e. "T-minus...") .
                                "+" "-")
-                           (ts-human-format-duration remaining 'abbr))))))
+                           (format-seconds (if (< remaining 60)
+                                               "%2s" hammy-mode-lighter-seconds-format)
+                                           remaining))))))
     (if hammy-active
         (concat (propertize hammy-mode-lighter-prefix
                             'face 'hammy-mode-lighter-prefix-active)

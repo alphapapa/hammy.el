@@ -289,6 +289,7 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 *Additions*
 + Command ~hammy-status~ shows information about active hammys in the echo area.
 + Option ~hammy-mode-lighter-pie~ shows a "progress pie" next to the time remaining.  (See associated faces for customization.)
++ Option ~hammy-mode-lighter-seconds-format~, used when the time remaining is less than one minute.
 
 *Changes*
 + Add 10-minute reminders to default pomodoro timer.
