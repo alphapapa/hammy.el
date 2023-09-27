@@ -938,7 +938,7 @@ appropriate face to ensure proper appearance.")
                                ;; the end of an interval (i.e. "T-minus...") .
                                "+" "-")
                            (format-seconds (if (< remaining 60)
-                                               "%2s" hammy-mode-lighter-seconds-format)
+                                               "%2ss" hammy-mode-lighter-seconds-format)
                                            remaining))))))
     (if hammy-active
         (concat (propertize hammy-mode-lighter-prefix
