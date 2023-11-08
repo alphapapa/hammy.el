@@ -525,6 +525,11 @@ If QUIETLY, don't say so."
     (hammy-call (hammy-stopped hammy) hammy)
     (setf (hammy-interval hammy) nil
           hammy-active (remove hammy hammy-active))
+    (defvar hammy-mode) ; `hammy-mode' is defined later in the file.
+    (when hammy-mode
+      ;; HACK: `hammy--mode-line-update' only updates when a hammy is
+      ;; active, so we do it directly.
+      (force-mode-line-update 'all))
     hammy))
 
 (cl-defun hammy-next (hammy &key duration advance interval)
