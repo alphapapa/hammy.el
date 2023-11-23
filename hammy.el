@@ -535,7 +535,7 @@ If QUIETLY, don't say so."
 (cl-defun hammy-next (hammy &key duration advance interval)
   "Advance to HAMMY's next interval.
 If DURATION (interactively, with numeric prefix), set the
-interval's duration to DURATION seconds.  If ADVANCE, advance to
+interval's duration to DURATION minutes.  If ADVANCE, advance to
 the next interval even if the previous interval has an
 unsatisfied ADVANCE predicate.  INTERVAL may be an interval in
 the hammy to advance to (interactively, with universal prefix,
@@ -544,7 +544,7 @@ prompt for the interval with completion)."
    (if-let ((hammy (hammy-complete "Advance hammy: " hammy-active)))
        (list hammy
              :duration (cl-typecase current-prefix-arg
-                         (number current-prefix-arg))
+                         (number (* 60 current-prefix-arg)))
              :advance t
              :interval (cl-typecase current-prefix-arg
                          (null nil)

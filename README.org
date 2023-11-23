@@ -293,6 +293,7 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 
 *Changes*
 + Add 10-minute reminders to default pomodoro timer.
++ Command ~hammy-next~ interprets a numeric prefix argument as a number of minutes (rather than a number of seconds).
 
 *Fixes*
 + Listify hammys' ~stopped~ slot.  ([[https://github.com/alphapapa/hammy.el/issues/13][#13]].  Thanks to [[https://github.com/Rickyfs][Rickyfs]] for reporting.)
