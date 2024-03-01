@@ -875,6 +875,7 @@ Summary includes elapsed times, etc."
   "Timer used to update the mode line.")
 
 (defvar hammy-mode-lighter nil)
+(put 'hammy-mode-lighter 'risky-local-variable t)
 
 (defface hammy-mode-lighter-pie '((t (:inherit mode-line)))
   "Hammy progress pies.
