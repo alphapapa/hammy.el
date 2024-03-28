@@ -863,6 +863,13 @@ Summary includes elapsed times, etc."
   "Update a hammy's pie every this many seconds."
   :type 'integer)
 
+(defcustom hammy-mode-lighter-pie-height 0.9
+  "Size of pie, as a fraction of line height.
+While a value of 1.0 may make the most circular and
+nicest-looking pie, it may result in the horizontal edges being
+cropped, depending on font."
+  :type 'number)
+
 (defcustom hammy-mode-update-mode-line-continuously t
   "Update the mode line every second while a hammy is running."
   :type 'boolean)
@@ -1016,7 +1023,7 @@ Suitable for inserting with `insert-image'."
                  (_ 'hammy-mode-lighter-pie-0))))
     ;; After choosing face, pass the absolute value of the fraction so
     ;; it will fill up again as it becomes further overdue.
-    (svg-lib-progress-pie (abs fraction) nil :height 1.0
+    (svg-lib-progress-pie (abs fraction) nil :height hammy-mode-lighter-pie-height
                           :background (face-attribute 'hammy-mode-lighter-pie :background nil t)
                           :foreground (face-attribute face :foreground nil t))))
 
