@@ -874,6 +874,12 @@ cropped, depending on font."
   "Update the mode line every second while a hammy is running."
   :type 'boolean)
 
+(defface hammy-mode-lighter-name '((t (:inherit bold)))
+  "Applied to hammy names in the lighter.")
+
+(defface hammy-mode-lighter-interval '((t (:inherit italic)))
+  "Applied to interval names in the lighter.")
+
 (defface hammy-mode-lighter-prefix-inactive '((t (:inherit warning)))
   "Used when no hammy is active.")
 
@@ -944,13 +950,15 @@ appropriate face to ensure proper appearance.")
                     (float-time (time-subtract (current-time)
                                                (hammy-current-interval-start-time hammy)))))))
            (format "%s(%s%s:%s)"
-                   (hammy-name hammy)
+                   (propertize (hammy-name hammy)
+                               'face 'hammy-mode-lighter-name)
                    (if (hammy-overduep hammy)
                        (propertize hammy-mode-lighter-overdue
                                    'face 'hammy-mode-lighter-overdue)
                      "")
                    (propertize (hammy-interval-name (hammy-interval hammy))
-                               'face (hammy-interval-face (hammy-interval hammy)))
+                               'face `(hammy-mode-lighter-interval
+                                       ,(hammy-interval-face (hammy-interval hammy))))
                    (concat (when hammy-mode-lighter-pie
                              (propertize " " 'display (hammy--pie hammy)))
                            (if (hammy-overduep hammy)
