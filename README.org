@@ -300,6 +300,8 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 + Internal optimization of mode line lighter.
 
 *Fixes*
++ Command ~hammy-toggle~ now works correctly.  ([[https://github.com/alphapapa/hammy.el/issues/11][#11]].  Thanks to [[https://github.com/Edgaras1][Edgaras1]] for reporting.)
++ "⅓-time" timer toggles and resets properly.  ([[https://github.com/alphapapa/hammy.el/issues/11][#11]].  Thanks to [[https://github.com/Edgaras1][Edgaras1]] for reporting.)
 + Listify hammys' ~stopped~ slot.  ([[https://github.com/alphapapa/hammy.el/issues/13][#13]].  Thanks to [[https://github.com/Rickyfs][Rickyfs]] for reporting.)
 + Update mode line immediately when stopping a hammy.
 
