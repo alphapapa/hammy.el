@@ -287,12 +287,12 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 ** 0.3-pre
 
 *Additions*
++ Built-in "1-shot" timer that prompts for a name and duration on each use.
 + Command ~hammy-status~ shows information about active hammys in the echo area.
 + Option ~hammy-mode-lighter-pie~ shows a "progress pie" next to the time remaining.  (See associated faces for customization.)
+  - Option ~hammy-mode-lighter-pie-height~ sets the size of the progress pie.
 + Option ~hammy-mode-lighter-seconds-format~, used when the time remaining is less than one minute.
-+ Option ~hammy-mode-lighter-pie-height~ sets the size of the progress pie.
 + Faces ~hammy-mode-lighter-name~ and ~hammy-mode-lighter-interval~.
-+ Built-in "1-shot" timer that prompts for a name and duration on each use.
 
 *Changes*
 + Add 10-minute reminders to default pomodoro timer.
