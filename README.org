@@ -284,7 +284,7 @@ If you use ~tab-bar-mode~, rather than showing the Hammy status in each window's
 :TOC:      :ignore (descendants)
 :END:
 
-** 0.3-pre
+** 0.3
 
 *Additions*
 + Built-in "1-shot" timer that prompts for a name and duration on each use.
