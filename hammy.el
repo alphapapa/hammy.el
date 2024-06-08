@@ -1159,14 +1159,18 @@ Suitable for inserting with `insert-image'."
                                     (when hammy-sound-end-work
                                       (play-sound-file hammy-sound-end-work))))))
    (interval :name "Break"
-             :duration (do (pcase-let* ((`(,_interval ,start ,end) (car history))
-                                        (work-seconds (float-time (time-subtract end start)))
-                                        (duration (* work-seconds 0.33)))
-                             (when (alist-get 'unused-break etc)
-                               ;; Add unused break time.
-                               (cl-incf duration (alist-get 'unused-break etc))
-                               (setf (alist-get 'unused-break etc) nil))
-                             duration))
+             :duration (do
+                        (cl-assert (equal "Work" (hammy-interval-name (caar history))))
+                        (let ((duration (cl-loop for (interval start end) in history
+                                                 while (equal "Work" (hammy-interval-name interval))
+                                                 sum (float-time (time-subtract end start))
+                                                 into work-seconds
+                                                 finally return (* work-seconds 0.33))))
+                          (when (alist-get 'unused-break etc)
+                            ;; Add unused break time.
+                            (cl-incf duration (alist-get 'unused-break etc))
+                            (setf (alist-get 'unused-break etc) nil))
+                          duration))
              :before (do (let ((message (format "Starting break for %s."
                                                 (ts-human-format-duration current-duration))))
                            (announce message)
@@ -1184,8 +1188,7 @@ Suitable for inserting with `insert-image'."
                               (do (announce "Break time is over!")
                                   (notify "Break time is over!")
                                   (when hammy-sound-end-break
-                                    (play-sound-file hammy-sound-end-break))))))
-  :stopped (do (setf (alist-get 'unused-break etc) nil)))
+                                    (play-sound-file hammy-sound-end-break)))))))
 
 (hammy-define "1-shot"
   :documentation "Single-use timer that prompts for name and duration."
